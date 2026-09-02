@@ -1,0 +1,95 @@
+{
+  "manifest_version": 1,
+  "type": "device",
+  "name": "Yoto",
+  "description": {
+    "en": "Monitor your Yoto players: battery, charge, volume, playing card, ambient light and Wi-Fi signal.",
+    "fr": "Supervisez vos lecteurs Yoto : batterie, charge, volume, carte en cours, luminosité et signal Wi-Fi."
+  },
+  "version": "1.0.0",
+  "docker_image": "ghcr.io/prohand/gladys-yoto:1.0.0",
+  "gladys_version": ">=4.86.0",
+  "cover_image": "https://raw.githubusercontent.com/prohand/gladys-yoto/main/cover.png",
+  "categories": ["multimedia"],
+  "transports": ["cloud"],
+  "config_schema": [
+    {
+      "key": "intro",
+      "type": "section",
+      "label": { "en": "Getting started", "fr": "Pour commencer" },
+      "description": {
+        "en": "Create a free app on the Yoto developer dashboard, paste its Client ID below, save, then click Connect: Yoto shows a code to approve in your browser. Enable the scopes family:devices:view, family:devices:control and offline_access on your app.",
+        "fr": "Créez une application gratuite sur le portail développeur Yoto, collez son Client ID ci-dessous, enregistrez, puis cliquez sur Connecter : Yoto affiche un code à valider dans votre navigateur. Activez les scopes family:devices:view, family:devices:control et offline_access sur votre application."
+      },
+      "links": [
+        {
+          "url": "https://dashboard.yoto.dev/",
+          "label": { "en": "Yoto developer dashboard", "fr": "Portail développeur Yoto" }
+        },
+        {
+          "url": "https://yoto.dev/authentication/auth/",
+          "label": { "en": "Yoto authentication guide", "fr": "Guide d'authentification Yoto" }
+        }
+      ]
+    },
+    {
+      "key": "client_id",
+      "type": "string",
+      "label": { "en": "Yoto Client ID", "fr": "Client ID Yoto" },
+      "description": {
+        "en": "Client ID of your Yoto app (public client, device code flow enabled).",
+        "fr": "Client ID de votre application Yoto (client public, device code flow activé)."
+      },
+      "required": true
+    },
+    {
+      "key": "account",
+      "type": "account_link",
+      "label": { "en": "Yoto account", "fr": "Compte Yoto" },
+      "description": {
+        "en": "Click Connect, then approve the code Yoto displays. The link stays valid: the integration refreshes its token on its own.",
+        "fr": "Cliquez sur Connecter, puis validez le code affiché par Yoto. La liaison reste valide : l'intégration renouvelle son jeton toute seule."
+      },
+      "required": true
+    },
+    {
+      "key": "poll_frequency",
+      "type": "number",
+      "label": { "en": "Refresh interval (s)", "fr": "Intervalle de rafraîchissement (s)" },
+      "description": {
+        "en": "How often each player is polled, in seconds. The Yoto API is a cloud API: stay above 60 s unless you really need more.",
+        "fr": "Fréquence d'interrogation de chaque lecteur, en secondes. L'API Yoto est une API cloud : restez au-dessus de 60 s sauf besoin réel."
+      },
+      "required": false,
+      "default": 120,
+      "min": 30,
+      "max": 3600
+    },
+    {
+      "key": "request_status_push",
+      "type": "boolean",
+      "label": {
+        "en": "Ask the player to refresh before reading",
+        "fr": "Demander au lecteur de se rafraîchir avant lecture"
+      },
+      "description": {
+        "en": "Sends a status request to the player before each poll, so the values read are fresh instead of the last ones it reported. Requires the family:devices:control scope.",
+        "fr": "Envoie une demande de statut au lecteur avant chaque interrogation, pour lire des valeurs fraîches plutôt que les dernières remontées. Nécessite le scope family:devices:control."
+      },
+      "required": false,
+      "default": true
+    }
+  ],
+  "actions": [
+    {
+      "key": "test_connection",
+      "label": { "en": "Test the connection", "fr": "Tester la connexion" },
+      "timeout_seconds": 30
+    },
+    {
+      "key": "refresh_now",
+      "label": { "en": "Refresh all players now", "fr": "Rafraîchir tous les lecteurs" },
+      "timeout_seconds": 60
+    }
+  ]
+}

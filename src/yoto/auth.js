@@ -1,0 +1,256 @@
+// -----------------------------------------------------------------------------
+// Yoto authentication: OAuth 2.0 device authorization grant (RFC 8628).
+//
+// Why the device flow and not the classic authorization code flow: Yoto never
+// redirects back to a local Gladys. The user clicks "Connect" in the
+// Configuration screen, Gladys opens the Yoto page carrying a one-time code,
+// the user approves it there, and we long-poll the token endpoint meanwhile —
+// exactly what the SDK calls an `account_link` field.
+//
+// Endpoints (public, documented on https://yoto.dev):
+//   POST https://login.yotoplay.com/oauth/device/code
+//   POST https://login.yotoplay.com/oauth/token
+//
+// Tokens are NOT written to disk: they are stored back as Gladys config keys
+// outside the `config_schema` (never rendered in the UI), so a container
+// restart or an image update keeps the account linked.
+// -----------------------------------------------------------------------------
+
+import { createLogger } from '@gladysassistant/integration-sdk';
+
+const logger = createLogger({ name: 'yoto-auth' });
+
+export const LOGIN_URL = 'https://login.yotoplay.com';
+export const DEVICE_CODE_URL = `${LOGIN_URL}/oauth/device/code`;
+export const TOKEN_URL = `${LOGIN_URL}/oauth/token`;
+export const AUDIENCE = 'https://api.yotoplay.com';
+
+// `offline_access` is what gets us a refresh token: without it the link would
+// die a few hours later and the user would have to reconnect by hand.
+export const SCOPES =
+  'family:devices:view family:devices:control family:library:view offline_access';
+
+const DEVICE_CODE_GRANT = 'urn:ietf:params:oauth:grant-type:device_code';
+const HTTP_TIMEOUT_MS = 15_000;
+
+// Refresh a bit before the real expiry: a token that expires mid-request would
+// surface as a spurious 401.
+const EXPIRY_MARGIN_SECONDS = 60;
+
+/** Raised when the user must (re)link their account: nothing retryable left. */
+export class YotoAuthError extends Error {
+  constructor(message, { needsRelink = false } = {}) {
+    super(message);
+    this.name = 'YotoAuthError';
+    this.needsRelink = needsRelink;
+  }
+}
+
+/**
+ * Step 1 of the device flow: ask Yoto for a user code.
+ * @returns {Promise<{ device_code: string, user_code: string, verification_uri: string,
+ *                     verification_uri_complete: string, expires_in: number, interval: number }>}
+ */
+export async function requestDeviceCode(clientId) {
+  const body = new URLSearchParams({ client_id: clientId, scope: SCOPES, audience: AUDIENCE });
+  const payload = await postForm(DEVICE_CODE_URL, body, 'device code request');
+  if (!payload.device_code || !payload.user_code) {
+    throw new YotoAuthError('Yoto returned no device code');
+  }
+  return {
+    ...payload,
+    // Yoto always sends it, but the fallback keeps the UI usable if it stops.
+    verification_uri_complete:
+      payload.verification_uri_complete ??
+      `${payload.verification_uri}?user_code=${encodeURIComponent(payload.user_code)}`,
+    expires_in: Number(payload.expires_in ?? 300),
+    interval: Number(payload.interval ?? 5),
+  };
+}
+
+/**
+ * Step 2: poll the token endpoint until the user approves the code, the code
+ * expires, or `shouldStop()` asks us to give up (config changed, shutdown).
+ * @returns {Promise<object|null>} the token payload, or null when we stopped early
+ */
+export async function pollDeviceToken(clientId, deviceCode, options = {}) {
+  const { interval = 5, expiresIn = 300, shouldStop = () => false, sleep = defaultSleep } = options;
+  const deadline = Date.now() + expiresIn * 1000;
+  let delayMs = interval * 1000;
+
+  while (Date.now() < deadline) {
+    if (shouldStop()) {
+      return null;
+    }
+    await sleep(delayMs);
+
+    const body = new URLSearchParams({
+      grant_type: DEVICE_CODE_GRANT,
+      device_code: deviceCode,
+      client_id: clientId,
+      audience: AUDIENCE,
+    });
+    const response = await fetch(TOKEN_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body,
+      signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
+    });
+    const payload = await readJson(response);
+
+    if (response.ok) {
+      return payload;
+    }
+    // The two "keep waiting" answers of RFC 8628. `slow_down` means we poll
+    // too fast: the server asks for 5 more seconds between attempts.
+    if (payload.error === 'authorization_pending') {
+      continue;
+    }
+    if (payload.error === 'slow_down') {
+      delayMs += 5000;
+      continue;
+    }
+    if (payload.error === 'expired_token') {
+      throw new YotoAuthError('The Yoto code expired before it was approved', {
+        needsRelink: true,
+      });
+    }
+    throw new YotoAuthError(`Yoto refused the authorization: ${describeError(payload)}`, {
+      needsRelink: payload.error === 'access_denied',
+    });
+  }
+  throw new YotoAuthError('The Yoto code expired before it was approved', { needsRelink: true });
+}
+
+/**
+ * Holds the tokens in memory and refreshes them on demand.
+ *
+ * `onTokensChanged` is how they survive a restart: the integration passes a
+ * callback writing them into the Gladys config (`gladys.setConfig`).
+ */
+export class TokenStore {
+  constructor({ onTokensChanged } = {}) {
+    this.onTokensChanged = onTokensChanged;
+    this.accessToken = null;
+    this.refreshToken = null;
+    this.expiresAt = 0;
+    // Shared promise: concurrent polls of several players must trigger ONE
+    // refresh, not one per device.
+    this.refreshPromise = null;
+  }
+
+  /** Load the tokens read from the Gladys config at startup (no write back). */
+  restore({ access_token: accessToken, refresh_token: refreshToken, expires_at: expiresAt } = {}) {
+    this.accessToken = accessToken ?? null;
+    this.refreshToken = refreshToken ?? null;
+    this.expiresAt = Number(expiresAt ?? 0);
+  }
+
+  /** Store a fresh token payload coming from Yoto, and persist it. */
+  async update(payload) {
+    this.accessToken = payload.access_token ?? null;
+    // A refresh response may omit the refresh token: keep the current one.
+    this.refreshToken = payload.refresh_token ?? this.refreshToken;
+    this.expiresAt = Date.now() + Number(payload.expires_in ?? 3600) * 1000;
+    if (this.onTokensChanged) {
+      await this.onTokensChanged({
+        access_token: this.accessToken,
+        refresh_token: this.refreshToken,
+        expires_at: this.expiresAt,
+      });
+    }
+  }
+
+  /** Forget everything (invalid refresh token: the user must link again). */
+  async clear() {
+    this.accessToken = null;
+    this.refreshToken = null;
+    this.expiresAt = 0;
+    if (this.onTokensChanged) {
+      await this.onTokensChanged({ access_token: '', refresh_token: '', expires_at: 0 });
+    }
+  }
+
+  get linked() {
+    return Boolean(this.refreshToken);
+  }
+
+  /** Return a usable access token, refreshing it when it is about to expire. */
+  async getAccessToken(clientId) {
+    if (this.accessToken && Date.now() < this.expiresAt - EXPIRY_MARGIN_SECONDS * 1000) {
+      return this.accessToken;
+    }
+    if (!this.refreshToken) {
+      throw new YotoAuthError('No Yoto account linked yet', { needsRelink: true });
+    }
+    this.refreshPromise = this.refreshPromise ?? this.#refresh(clientId);
+    try {
+      return await this.refreshPromise;
+    } finally {
+      this.refreshPromise = null;
+    }
+  }
+
+  async #refresh(clientId) {
+    logger.debug('Refreshing the Yoto access token');
+    const body = new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: this.refreshToken,
+      client_id: clientId,
+      audience: AUDIENCE,
+    });
+    const response = await fetch(TOKEN_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body,
+      signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
+    });
+    const payload = await readJson(response);
+
+    if (!response.ok) {
+      // A rejected refresh token never becomes valid again: drop it so the UI
+      // asks for a new link instead of retrying forever.
+      if (payload.error === 'invalid_grant') {
+        await this.clear();
+        throw new YotoAuthError('The Yoto link was revoked, please connect again', {
+          needsRelink: true,
+        });
+      }
+      throw new YotoAuthError(`Token refresh failed: ${describeError(payload)}`);
+    }
+    await this.update(payload);
+    return this.accessToken;
+  }
+}
+
+async function postForm(url, body, what) {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body,
+    signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
+  });
+  const payload = await readJson(response);
+  if (!response.ok) {
+    throw new YotoAuthError(
+      `Yoto ${what} failed (HTTP ${response.status}): ${describeError(payload)}`,
+    );
+  }
+  return payload;
+}
+
+async function readJson(response) {
+  try {
+    return await response.json();
+  } catch {
+    return {};
+  }
+}
+
+function describeError(payload) {
+  return payload.error_description ?? payload.error ?? 'unknown error';
+}
+
+function defaultSleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
