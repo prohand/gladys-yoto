@@ -45,13 +45,14 @@ test('the poll frequency is declared and bounded', () => {
   assert.ok(field.default >= field.min && field.default <= field.max);
 });
 
-test('the account is linked through the account_link flow', () => {
+test('the account is linked through the browser OAuth2 flow', () => {
   const field = manifest.config_schema.find((entry) => entry.key === 'account');
   assert.ok(field, 'the Yoto account must be linkable from the Configuration screen');
-  // Yoto never redirects back to a local Gladys: `account_link` + device code
-  // flow, hence a handler for the authorize URL and none for a callback.
-  assert.equal(field.type, 'account_link');
+  // Yoto deprecated the device code grant: the flow is the browser one, so
+  // Gladys hands us a redirect URI and relays the callback back to us.
+  assert.equal(field.type, 'oauth2');
   assert.ok(indexSource.includes('gladys.onOAuthAuthorizeUrl('));
+  assert.ok(indexSource.includes('gladys.onOAuthCallback('), 'the callback must be handled');
 });
 
 test('the Client ID is required: nothing works without a Yoto app', () => {

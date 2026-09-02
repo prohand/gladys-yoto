@@ -6,8 +6,8 @@
     "en": "Monitor your Yoto players: battery, charge, volume, playing card, ambient light and Wi-Fi signal.",
     "fr": "Supervisez vos lecteurs Yoto : batterie, charge, volume, carte en cours, luminosité et signal Wi-Fi."
   },
-  "version": "1.0.0",
-  "docker_image": "ghcr.io/prohand/gladys-yoto:1.0.0",
+  "version": "1.1.0",
+  "docker_image": "ghcr.io/prohand/gladys-yoto:1.1.0",
   "gladys_version": ">=4.86.0",
   "cover_image": "https://raw.githubusercontent.com/prohand/gladys-yoto/main/cover.png",
   "categories": ["multimedia"],
@@ -18,8 +18,8 @@
       "type": "section",
       "label": { "en": "Getting started", "fr": "Pour commencer" },
       "description": {
-        "en": "Create a free app on the Yoto developer dashboard, paste its Client ID below, save, then click Connect: Yoto shows a code to approve in your browser. Enable the scopes family:devices:view, family:devices:control and offline_access on your app.",
-        "fr": "Créez une application gratuite sur le portail développeur Yoto, collez son Client ID ci-dessous, enregistrez, puis cliquez sur Connecter : Yoto affiche un code à valider dans votre navigateur. Activez les scopes family:devices:view, family:devices:control et offline_access sur votre application."
+        "en": "Create a free app on the Yoto developer dashboard as a public client, paste its Client ID below, save, then click Connect: Yoto opens its sign-in page and redirects back to Gladys. Enable the scopes family:devices:view, family:devices:control, family:library:view and offline_access, and allow the Gladys callback URL logged by the integration when you click Connect.",
+        "fr": "Créez une application gratuite sur le portail développeur Yoto en client public, collez son Client ID ci-dessous, enregistrez, puis cliquez sur Connecter : Yoto ouvre sa page de connexion puis renvoie vers Gladys. Activez les scopes family:devices:view, family:devices:control, family:library:view et offline_access, et autorisez l'URL de rappel Gladys que l'intégration affiche dans ses logs au clic sur Connecter."
       },
       "links": [
         {
@@ -37,18 +37,18 @@
       "type": "string",
       "label": { "en": "Yoto Client ID", "fr": "Client ID Yoto" },
       "description": {
-        "en": "Client ID of your Yoto app (public client, device code flow enabled).",
-        "fr": "Client ID de votre application Yoto (client public, device code flow activé)."
+        "en": "Client ID of your Yoto app (public client, authorization code flow with PKCE).",
+        "fr": "Client ID de votre application Yoto (client public, flux authorization code avec PKCE)."
       },
       "required": true
     },
     {
       "key": "account",
-      "type": "account_link",
+      "type": "oauth2",
       "label": { "en": "Yoto account", "fr": "Compte Yoto" },
       "description": {
-        "en": "Click Connect, then approve the code Yoto displays. The link stays valid: the integration refreshes its token on its own.",
-        "fr": "Cliquez sur Connecter, puis validez le code affiché par Yoto. La liaison reste valide : l'intégration renouvelle son jeton toute seule."
+        "en": "Click Connect, sign in on the Yoto page, and you are redirected back here. The link stays valid: the integration refreshes its token on its own.",
+        "fr": "Cliquez sur Connecter, identifiez-vous sur la page Yoto, vous êtes ensuite redirigé ici. La liaison reste valide : l'intégration renouvelle son jeton toute seule."
       },
       "required": true
     },

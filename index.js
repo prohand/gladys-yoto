@@ -15,7 +15,14 @@
 
 import { GladysIntegration, logger } from '@gladysassistant/integration-sdk';
 import { normalizeConfig } from './src/config.js';
-import { TokenStore, YotoAuthError, requestDeviceCode, pollDeviceToken } from './src/yoto/auth.js';
+import {
+  TokenStore,
+  YotoAuthError,
+  exchangeAuthorizationCode,
+  pollDeviceToken,
+  requestDeviceCode,
+  startBrowserAuthorization,
+} from './src/yoto/auth.js';
 import { YotoApi } from './src/yoto/api.js';
 import { PlayerRegistry } from './src/devices/index.js';
 
@@ -33,24 +40,56 @@ const tokenStore = new TokenStore({
 const api = new YotoApi(tokenStore, () => config.client_id);
 const registry = new PlayerRegistry(api);
 
-// Guard for the device code flow: one pending link at a time, and it must stop
+// Guard for the linking flow: one pending link at a time, and it must stop
 // when the user reconnects or the container shuts down.
 let pendingLink = null;
 
-// --- Account linking: the "Connect" button of the `account_link` field -------
-// Yoto never redirects back to a local Gladys, so we use the OAuth device
-// authorization grant: return the URL carrying the code, and long-poll Yoto
-// until the user approves it.
-gladys.onOAuthAuthorizeUrl(async () => {
-  if (!config.client_id) {
-    throw new Error('Fill in your Yoto Client ID and save the configuration first.');
+// --- Account linking: the "Connect" button of the `oauth2` field ------------
+// Yoto deprecated the device code grant, so the flow is the browser one it now
+// recommends: Gladys opens login.yotoplay.com, the user signs in, Yoto redirects
+// back to the Gladys callback, and onOAuthCallback below trades the code (with
+// the PKCE verifier) for the tokens. A core that gives us no redirect URI falls
+// back to the device code flow.
+gladys.onOAuthAuthorizeUrl(async (key, redirectUri) => {
+  try {
+    if (!config.client_id) {
+      throw new YotoAuthError('Fill in your Yoto Client ID and save the configuration first.');
+    }
+    return redirectUri ? startBrowserLink(redirectUri) : await startDeviceLink();
+  } catch (err) {
+    // Gladys only shows a generic "could not start the connection" to the user:
+    // spell out the real reason in the logs AND in the connection badge, which
+    // is the one place of the Configuration screen that can carry a message.
+    logger.error(`Could not start the Yoto sign-in: ${err.message}`);
+    await reportDisconnected({
+      en: `Could not start the Yoto sign-in: ${err.message}`,
+      fr: `Impossible de lancer la connexion Yoto : ${err.message}`,
+    });
+    throw err;
   }
+});
+
+/** Browser flow (recommended by Yoto): return the sign-in URL, wait for the callback. */
+function startBrowserLink(redirectUri) {
+  const flow = startBrowserAuthorization(config.client_id, redirectUri);
+  pendingLink?.cancel();
+  pendingLink = { mode: 'browser', ...flow, cancel: () => {} };
+  // The callback URL must be declared on the Yoto app: show it, otherwise the
+  // user only gets Yoto's "Callback URL mismatch" page with no way back.
+  logger.info(`Yoto sign-in started, callback URL to allow on the Yoto app: ${redirectUri}`);
+  return flow.url;
+}
+
+/** Device code flow, kept for cores without a redirect URI (and older Yoto apps). */
+async function startDeviceLink() {
+  logger.warn('No redirect URL from Gladys: falling back to the deprecated device code flow');
   const flow = await requestDeviceCode(config.client_id);
   logger.info(`Yoto pairing started, code ${flow.user_code} (valid ${flow.expires_in}s)`);
 
-  const link = { cancelled: false };
+  const link = { mode: 'device', cancelled: false };
   pendingLink?.cancel();
-  pendingLink = { cancel: () => (link.cancelled = true) };
+  link.cancel = () => (link.cancelled = true);
+  pendingLink = link;
 
   // Do NOT await: the handler must resolve with the URL right away, the user
   // approves it in the browser meanwhile.
@@ -67,6 +106,37 @@ gladys.onOAuthAuthorizeUrl(async () => {
   });
 
   return flow.verification_uri_complete;
+}
+
+// --- Account linking: Yoto redirected back to Gladys -------------------------
+gladys.onOAuthCallback(async (key, { code, state, redirectUri }) => {
+  const link = pendingLink;
+  if (!link || link.mode !== 'browser') {
+    throw new Error('No Yoto sign-in is in progress, click Connect again.');
+  }
+  // The `state` we generated came back untouched: the code answers OUR request.
+  if (state !== link.state) {
+    throw new Error('Unexpected state in the Yoto callback, click Connect again.');
+  }
+  pendingLink = null;
+  try {
+    const tokens = await exchangeAuthorizationCode({
+      clientId: config.client_id,
+      code,
+      verifier: link.verifier,
+      redirectUri: redirectUri ?? link.redirectUri,
+    });
+    await tokenStore.update(tokens);
+    logger.info('Yoto account linked');
+    await initializeAccount();
+  } catch (err) {
+    logger.error(`Yoto token exchange failed: ${err.message}`);
+    await reportDisconnected({
+      en: `Yoto sign-in failed: ${err.message}`,
+      fr: `Connexion Yoto échouée : ${err.message}`,
+    });
+    throw err;
+  }
 });
 
 async function waitForApproval(flow, link) {
