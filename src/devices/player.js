@@ -21,7 +21,7 @@ import {
   DEVICE_FEATURE_UNITS,
 } from '@gladysassistant/integration-sdk';
 import { gladysPollFrequency } from '../config.js';
-import { parseStatus, isPlaying } from '../yoto/status.js';
+import { parseStatus, isPlaying, isCharging } from '../yoto/status.js';
 
 export const DEVICE_TYPE = 'yoto-player';
 
@@ -211,7 +211,7 @@ export async function pollPlayer(gladys, player, config, { api, cache, cardTitle
   const numericStates = [
     [FEATURE.ONLINE, online === null ? null : Number(online)],
     [FEATURE.BATTERY, status.batteryLevel],
-    [FEATURE.CHARGING, booleanToState(status.isCharging)],
+    [FEATURE.CHARGING, booleanToState(isCharging(status))],
     [FEATURE.VOLUME, status.volume],
     [FEATURE.PLAYING, booleanToState(isPlaying(status))],
     [FEATURE.AMBIENT_LIGHT, status.ambientLight],
