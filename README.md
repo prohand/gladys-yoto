@@ -52,8 +52,14 @@ restart or an image update.
 
 ## How the refresh works
 
-`poll_frequency` is published **on each device**, so the Gladys scheduler calls
-`onPoll` at that interval, per player. One poll does:
+Each device is published with `should_poll: true` and a `poll_frequency`, so
+the Gladys scheduler calls `onPoll` per player. The core only accepts the
+frequencies it schedules — 1 s, 2 s, 10 s, 15 s, 30 s and 60 s, in
+**milliseconds** — and refuses anything else with `invalid poll frequency`, so
+the configured interval is mapped to the closest tick that is not faster than
+it. The 60 s ceiling is not the last word: a longer interval (120 s by default)
+is enforced by the registry, which skips the ticks landing too early. One poll
+does:
 
 1. `POST /device-v2/{deviceId}/command/status` — ask the player to report its
    status now (optional, `request_status_push`);

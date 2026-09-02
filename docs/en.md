@@ -38,9 +38,12 @@ Gladys callback URL in its **Allowed callback URLs** — see below.
 Settings:
 
 - **Refresh interval** (`poll_frequency`) — 30 to 3600 seconds, 120 by default.
-  This is how often Gladys polls each player. The Yoto API is a cloud API: stay
-  above 60 seconds unless you really need more. A change applies immediately,
-  without recreating any device.
+  This is how often each player is read. The Yoto API is a cloud API: stay
+  above 60 seconds unless you really need more. Gladys schedules on fixed ticks
+  (60 seconds at the slowest), so a value between 30 and 59 seconds is served by
+  the 30-second tick, and anything above 60 seconds is honoured by the
+  integration itself. A change applies immediately, without recreating any
+  device.
 - **Ask the player to refresh before reading** — sends a status request to the
   player before each poll, so the values read are fresh instead of the last ones
   it reported. Turn it off if your Yoto app lacks the `family:devices:control`

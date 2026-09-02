@@ -47,3 +47,25 @@ function clampPollFrequency(value) {
   }
   return Math.min(3600, Math.max(30, Math.round(seconds)));
 }
+
+// Gladys does NOT schedule an arbitrary interval: a device is attached to one
+// of these fixed ticks (milliseconds), and the core rejects the publication of
+// any other value ("invalid poll frequency"). The slowest tick is one minute.
+export const GLADYS_POLL_FREQUENCIES_MS = [1000, 2000, 10000, 15000, 30000, 60000];
+
+/**
+ * The Gladys tick a player is registered on: the slowest one that is not
+ * slower than the interval the user asked for. Anything above 60 s lands on
+ * the 60 s tick, and the registry then skips the ticks in between — that is
+ * how a 5-minute interval stays a 5-minute interval on the Yoto cloud.
+ * @param {number} seconds interval asked by the user (already clamped)
+ * @returns {number} one of GLADYS_POLL_FREQUENCIES_MS
+ */
+export function gladysPollFrequency(seconds) {
+  const wanted = Number(seconds) * 1000;
+  if (!Number.isFinite(wanted)) {
+    return gladysPollFrequency(DEFAULT_CONFIG.poll_frequency);
+  }
+  const allowed = [...GLADYS_POLL_FREQUENCIES_MS].sort((a, b) => a - b);
+  return allowed.filter((tick) => tick <= wanted).pop() ?? allowed[0];
+}
