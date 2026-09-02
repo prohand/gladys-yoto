@@ -1,5 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import {
+  DEVICE_FEATURE_CATEGORIES,
+  DEVICE_FEATURE_TYPES,
+  DEVICE_FEATURE_UNITS,
+} from '@gladysassistant/integration-sdk';
 import { createFakeGladys, createFakeYotoApi } from './helpers/fakeGladys.js';
 import { PlayerRegistry } from '../src/devices/index.js';
 import { buildPlayerDevice, FEATURE, playerExternalIds } from '../src/devices/player.js';
@@ -49,6 +54,30 @@ test('every feature is read-only and has a unique external id', () => {
   for (const feature of device.features) {
     assert.equal(feature.read_only, true, `${feature.name} must be read-only`);
     assert.ok(feature.external_id.includes(PLAYER.deviceId), 'ids must carry the Yoto device id');
+  }
+});
+
+test('every feature uses a category, a type and a unit Gladys knows', () => {
+  // Gladys refuses the whole discovery payload with "unknown category" (400)
+  // when a single feature carries a constant that does not exist — a typo or
+  // an SDK constant we imagined, like the absent SENSOR category.
+  const categories = new Set(Object.values(DEVICE_FEATURE_CATEGORIES));
+  const types = new Set(
+    Object.values(DEVICE_FEATURE_TYPES).flatMap((group) => Object.values(group)),
+  );
+  const units = new Set(Object.values(DEVICE_FEATURE_UNITS));
+
+  const gladys = createFakeGladys();
+  const device = buildPlayerDevice(gladys, PLAYER, CONFIG);
+  for (const feature of device.features) {
+    assert.ok(
+      categories.has(feature.category),
+      `${feature.name}: unknown category ${feature.category}`,
+    );
+    assert.ok(types.has(feature.type), `${feature.name}: unknown type ${feature.type}`);
+    if (feature.unit !== undefined) {
+      assert.ok(units.has(feature.unit), `${feature.name}: unknown unit ${feature.unit}`);
+    }
   }
 });
 

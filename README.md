@@ -18,12 +18,12 @@ features:
 | Battery            | `battery` / `integer`       | %    | `batteryLevel`             |
 | Charging           | `battery` / `charging`      | –    | `charging`                 |
 | Volume             | `music` / `volume`          | %    | `userVolume` (or `volume`) |
-| Playing            | `sensor` / `binary`         | –    | `cardInserted` > 0         |
+| Playing            | `music` / `playback_state`  | –    | `cardInserted` > 0         |
 | Card playing       | `text` / `text`             | –    | `activeCard` (title)       |
 | Ambient light      | `light-sensor` / `integer`  | lux  | `als`                      |
 | Device temperature | `device-temperature-sensor` | °C   | `temp` (device side)       |
 | Wi-Fi signal       | `signal` / `integer`        | dBm  | `wifiStrength`             |
-| Online             | `sensor` / `binary`         | –    | `device.online`            |
+| Online             | `input` / `binary`          | –    | `device.online`            |
 
 Everything is **read-only**: the public Yoto REST API reports the player
 telemetry but does not expose the playback commands (play, pause, volume set),
