@@ -81,6 +81,19 @@ test('every feature uses a category, a type and a unit Gladys knows', () => {
   }
 });
 
+test('every feature carries the min/max Gladys stores as NOT NULL', () => {
+  // The core refuses the whole device with 422 UNPROCESSABLE_ENTITY
+  // ("t_device_feature.min cannot be null") when a single feature omits them,
+  // text features included.
+  const gladys = createFakeGladys();
+  const device = buildPlayerDevice(gladys, PLAYER, CONFIG);
+  for (const feature of device.features) {
+    assert.equal(typeof feature.min, 'number', `${feature.name}: min must be a number`);
+    assert.equal(typeof feature.max, 'number', `${feature.name}: max must be a number`);
+    assert.ok(feature.min <= feature.max, `${feature.name}: min must not exceed max`);
+  }
+});
+
 test('the registry discovers one Gladys device per Yoto player', async () => {
   const gladys = createFakeGladys();
   const registry = new PlayerRegistry(
