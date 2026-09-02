@@ -34,14 +34,16 @@ nothing.
 ## Configuration
 
 1. Create a free app on the [Yoto developer dashboard](https://dashboard.yoto.dev/)
-   (public client, device code flow) and enable the scopes
-   `family:devices:view`, `family:devices:control`, `family:library:view` and
-   `offline_access`.
+   as a **public client** and enable the scopes `family:devices:view`,
+   `family:devices:control`, `family:library:view` and `offline_access`.
 2. In Gladys, open the integration **Configuration** tab, paste the **Client ID**
    and save.
-3. Click **Connect**: Yoto opens a page with a code to approve. Once approved,
-   the players appear in the **Discovery** tab, ready to be added.
-4. Adjust the **refresh interval** (`poll_frequency`, 30–3600 s, default 120 s)
+3. Click **Connect** once and read the integration logs: they print the Gladys
+   callback URL (`Yoto sign-in started, callback URL to allow on the Yoto app: …`).
+   Add it to the **Allowed callback URLs** of the Yoto app.
+4. Click **Connect** again: sign in on the Yoto page, Yoto redirects back to
+   Gladys and the players appear in the **Discovery** tab, ready to be added.
+5. Adjust the **refresh interval** (`poll_frequency`, 30–3600 s, default 120 s)
    and, if needed, turn off _Ask the player to refresh before reading_.
 
 The tokens are stored as Gladys config keys outside the `config_schema` (never
@@ -81,7 +83,7 @@ needs an extra scope, while `/config` carries the same firmware status block.
 ```
 index.js               SDK wiring: handlers, account link, lifecycle
 src/config.js          defaults + normalization of the user config
-src/yoto/auth.js       device code flow, token refresh, token storage
+src/yoto/auth.js       PKCE authorization code flow, token refresh, token storage
 src/yoto/api.js        Yoto REST client
 src/yoto/status.js     raw firmware status -> Gladys values (pure functions)
 src/devices/player.js  one Yoto player -> one Gladys device + polling

@@ -3,8 +3,11 @@ import assert from 'node:assert/strict';
 import {
   TokenStore,
   YotoAuthError,
+  exchangeAuthorizationCode,
   requestDeviceCode,
   pollDeviceToken,
+  startBrowserAuthorization,
+  AUTHORIZE_URL,
   SCOPES,
   TOKEN_URL,
 } from '../src/yoto/auth.js';
@@ -29,6 +32,98 @@ function mockFetch(answers) {
 }
 
 const noSleep = async () => {};
+
+test('startBrowserAuthorization builds a PKCE authorization URL', () => {
+  const flow = startBrowserAuthorization('client-1', 'https://gladys.local/oauth/callback');
+  const url = new URL(flow.url);
+  assert.equal(`${url.origin}${url.pathname}`, AUTHORIZE_URL);
+  assert.equal(url.searchParams.get('client_id'), 'client-1');
+  assert.equal(url.searchParams.get('response_type'), 'code');
+  assert.equal(url.searchParams.get('redirect_uri'), 'https://gladys.local/oauth/callback');
+  assert.equal(url.searchParams.get('code_challenge_method'), 'S256');
+  assert.ok(url.searchParams.get('code_challenge'), 'a PKCE challenge is mandatory');
+  assert.equal(url.searchParams.get('state'), flow.state);
+  assert.equal(url.searchParams.get('scope'), SCOPES);
+  // The challenge travels, the verifier never leaves the integration.
+  assert.ok(!flow.url.includes(flow.verifier));
+});
+
+test('startBrowserAuthorization draws a new verifier and state every time', () => {
+  const first = startBrowserAuthorization('client-1', 'https://gladys.local/oauth/callback');
+  const second = startBrowserAuthorization('client-1', 'https://gladys.local/oauth/callback');
+  assert.notEqual(first.verifier, second.verifier);
+  assert.notEqual(first.state, second.state);
+});
+
+test('startBrowserAuthorization refuses to run without a redirect URL', () => {
+  assert.throws(
+    () => startBrowserAuthorization('client-1', undefined),
+    (err) => err instanceof YotoAuthError,
+  );
+});
+
+test('exchangeAuthorizationCode sends the code and the PKCE verifier', async () => {
+  const fetchMock = mockFetch([
+    { body: { access_token: 'at', refresh_token: 'rt', expires_in: 3600 } },
+  ]);
+  try {
+    const tokens = await exchangeAuthorizationCode({
+      clientId: 'client-1',
+      code: 'auth-code',
+      verifier: 'the-verifier',
+      redirectUri: 'https://gladys.local/oauth/callback',
+    });
+    assert.equal(tokens.refresh_token, 'rt');
+    const body = new URLSearchParams(fetchMock.calls[0].body);
+    assert.equal(fetchMock.calls[0].url, TOKEN_URL);
+    assert.equal(body.get('grant_type'), 'authorization_code');
+    assert.equal(body.get('code'), 'auth-code');
+    assert.equal(body.get('code_verifier'), 'the-verifier');
+    assert.equal(body.get('redirect_uri'), 'https://gladys.local/oauth/callback');
+  } finally {
+    fetchMock.restore();
+  }
+});
+
+test('exchangeAuthorizationCode surfaces the reason Yoto refused the code', async () => {
+  const fetchMock = mockFetch([
+    {
+      status: 403,
+      body: { error: 'invalid_grant', error_description: 'Invalid authorization code' },
+    },
+  ]);
+  try {
+    await assert.rejects(
+      () =>
+        exchangeAuthorizationCode({
+          clientId: 'client-1',
+          code: 'stale',
+          verifier: 'v',
+          redirectUri: 'https://gladys.local/oauth/callback',
+        }),
+      (err) => err instanceof YotoAuthError && err.message.includes('Invalid authorization code'),
+    );
+  } finally {
+    fetchMock.restore();
+  }
+});
+
+test('requestDeviceCode explains that Yoto deprecated the device code grant', async () => {
+  const fetchMock = mockFetch([
+    {
+      status: 403,
+      body: { error: 'unauthorized_client', error_description: 'Unauthorized or unknown client' },
+    },
+  ]);
+  try {
+    await assert.rejects(
+      () => requestDeviceCode('client-1'),
+      (err) => err instanceof YotoAuthError && err.message.includes('device code grant'),
+    );
+  } finally {
+    fetchMock.restore();
+  }
+});
 
 test('requestDeviceCode asks for the offline_access scope', async () => {
   const fetchMock = mockFetch([

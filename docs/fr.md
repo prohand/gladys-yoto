@@ -17,18 +17,27 @@ bouton inopérant.
 Une application sur le portail développeur Yoto (gratuit) :
 
 1. Ouvrez <https://dashboard.yoto.dev/> et créez une application de type
-   **client public** avec le **device code flow**.
+   **client public**.
 2. Activez les scopes `family:devices:view`, `family:devices:control`,
    `family:library:view` et `offline_access`.
 3. Notez le **Client ID**.
+
+Yoto a abandonné le flux _device code_ : l'intégration utilise le flux
+navigateur désormais recommandé (authorization code + PKCE). L'application doit
+donc aussi autoriser l'URL de rappel Gladys dans ses **Allowed callback URLs**
+— voir ci-dessous.
 
 ## Configuration
 
 1. Ouvrez l'onglet **Configuration** de l'intégration.
 2. Collez le **Client ID Yoto** et enregistrez.
-3. Cliquez sur **Connecter** : Yoto affiche une page avec un code à valider
-   avec votre compte. Une fois validé, le badge de connexion passe au vert.
-4. Les lecteurs apparaissent dans l'onglet **Découverte**, prêts à être
+3. Cliquez une première fois sur **Connecter**, puis ouvrez les logs de
+   l'intégration : la ligne `Yoto sign-in started, callback URL to allow on the
+Yoto app: …` donne l'URL exacte à coller dans les **Allowed callback URLs**
+   de votre application Yoto.
+4. Cliquez de nouveau sur **Connecter** : identifiez-vous sur la page Yoto,
+   Yoto redirige vers Gladys et le badge de connexion passe au vert.
+5. Les lecteurs apparaissent dans l'onglet **Découverte**, prêts à être
    ajoutés.
 
 Réglages disponibles :
@@ -61,8 +70,15 @@ l'image.
 - **« La liaison Yoto a expiré, reconnectez votre compte »** — le jeton a été
   révoqué (mot de passe changé, application supprimée côté Yoto). Cliquez de
   nouveau sur **Connecter**.
-- **Le code n'a pas été validé à temps** — le code Yoto n'est valable que
-  quelques minutes ; relancez la liaison.
+- **Yoto répond « Callback URL mismatch »** — l'URL affichée par Yoto est celle
+  de rappel Gladys : ajoutez-la dans les **Allowed callback URLs** de votre
+  application Yoto, puis recliquez sur **Connecter**.
+- **« Impossible de lancer la connexion Yoto : … »** — la raison exacte est dans
+  le message et dans les logs. Un `unauthorized_client` sur l'endpoint device
+  code signifie que l'application Yoto n'a pas ce grant : Yoto l'a abandonné,
+  mettez Gladys à jour pour que le flux navigateur soit utilisé.
+- **« Aucune connexion Yoto en cours »** — l'intégration a redémarré entre le
+  clic sur **Connecter** et le retour de Yoto ; recliquez sur **Connecter**.
 - **Valeurs figées ou manquantes** — un lecteur éteint ou hors ligne ne remonte
   plus rien : l'intégration publie alors le dernier état connu et le capteur
   « En ligne » passe à 0. Les capteurs absents d'un modèle (température sur un

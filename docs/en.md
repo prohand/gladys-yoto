@@ -15,19 +15,25 @@ declared read-only rather than showing a button that would do nothing.
 
 A free app on the Yoto developer dashboard:
 
-1. Open <https://dashboard.yoto.dev/> and create a **public client** app with
-   the **device code flow** enabled.
+1. Open <https://dashboard.yoto.dev/> and create a **public client** app.
 2. Enable the scopes `family:devices:view`, `family:devices:control`,
    `family:library:view` and `offline_access`.
 3. Copy the **Client ID**.
+
+Yoto deprecated the _device code_ flow: the integration uses the browser flow
+Yoto now recommends (authorization code + PKCE), so the app also needs the
+Gladys callback URL in its **Allowed callback URLs** — see below.
 
 ## Configuration
 
 1. Open the **Configuration** tab of the integration.
 2. Paste the **Yoto Client ID** and save.
-3. Click **Connect**: Yoto opens a page with a code to approve with your
-   account. Once approved, the connection badge turns green.
-4. The players show up in the **Discovery** tab, ready to be added.
+3. Click **Connect** a first time, then open the integration logs: the line
+   `Yoto sign-in started, callback URL to allow on the Yoto app: …` gives the
+   exact URL to paste in the **Allowed callback URLs** of your Yoto app.
+4. Click **Connect** again: sign in on the Yoto page, Yoto redirects back to
+   Gladys and the connection badge turns green.
+5. The players show up in the **Discovery** tab, ready to be added.
 
 Settings:
 
@@ -57,8 +63,15 @@ survives a restart or an image update.
 - **"The Yoto link expired, please connect your account again"** — the token was
   revoked (password change, app deleted on the Yoto side). Click **Connect**
   again.
-- **The code was not approved in time** — a Yoto code is only valid for a few
-  minutes; start the link again.
+- **Yoto answers "Callback URL mismatch"** — the URL shown on that Yoto page is
+  the Gladys callback: add it to the **Allowed callback URLs** of your Yoto app,
+  then click **Connect** again.
+- **"Could not start the Yoto sign-in: …"** — the reason is spelled out in the
+  message and in the logs. `unauthorized_client` on the device code endpoint
+  means the Yoto app has no device code grant: Yoto deprecated it, update
+  Gladys so the browser flow is used.
+- **"No Yoto sign-in is in progress"** — the integration restarted between the
+  click on **Connect** and the return from Yoto; click **Connect** again.
 - **Stale or missing values** — a player that is off or offline reports nothing:
   the integration keeps the last known state and the "Online" sensor drops to 0.
   Sensors a model does not have (temperature on a Yoto Mini, for instance) are
