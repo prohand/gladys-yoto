@@ -1,6 +1,6 @@
 {
   "name": "gladys-yoto",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "description": "Yoto external integration for Gladys Assistant: supervise your Yoto players (battery, charge, volume, card playing, sensors).",
   "type": "module",

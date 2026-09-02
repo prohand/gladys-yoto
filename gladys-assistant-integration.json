@@ -6,17 +6,24 @@
     "en": "Monitor your Yoto players: battery, charge, volume, playing card, ambient light and Wi-Fi signal.",
     "fr": "Supervisez vos lecteurs Yoto : batterie, charge, volume, carte en cours, luminosité et signal Wi-Fi."
   },
-  "version": "1.1.0",
-  "docker_image": "ghcr.io/prohand/gladys-yoto:1.1.0",
+  "version": "1.1.1",
+  "docker_image": "ghcr.io/prohand/gladys-yoto:1.1.1",
   "gladys_version": ">=4.86.0",
   "cover_image": "https://raw.githubusercontent.com/prohand/gladys-yoto/main/cover.png",
-  "categories": ["multimedia"],
-  "transports": ["cloud"],
+  "categories": [
+    "multimedia"
+  ],
+  "transports": [
+    "cloud"
+  ],
   "config_schema": [
     {
       "key": "intro",
       "type": "section",
-      "label": { "en": "Getting started", "fr": "Pour commencer" },
+      "label": {
+        "en": "Getting started",
+        "fr": "Pour commencer"
+      },
       "description": {
         "en": "Create a free app on the Yoto developer dashboard as a public client, paste its Client ID below, save, then click Connect: Yoto opens its sign-in page and redirects back to Gladys. Enable the scopes family:devices:view, family:devices:control, family:library:view and offline_access, and allow the Gladys callback URL logged by the integration when you click Connect.",
         "fr": "Créez une application gratuite sur le portail développeur Yoto en client public, collez son Client ID ci-dessous, enregistrez, puis cliquez sur Connecter : Yoto ouvre sa page de connexion puis renvoie vers Gladys. Activez les scopes family:devices:view, family:devices:control, family:library:view et offline_access, et autorisez l'URL de rappel Gladys que l'intégration affiche dans ses logs au clic sur Connecter."
@@ -24,18 +31,27 @@
       "links": [
         {
           "url": "https://dashboard.yoto.dev/",
-          "label": { "en": "Yoto developer dashboard", "fr": "Portail développeur Yoto" }
+          "label": {
+            "en": "Yoto developer dashboard",
+            "fr": "Portail développeur Yoto"
+          }
         },
         {
           "url": "https://yoto.dev/authentication/auth/",
-          "label": { "en": "Yoto authentication guide", "fr": "Guide d'authentification Yoto" }
+          "label": {
+            "en": "Yoto authentication guide",
+            "fr": "Guide d'authentification Yoto"
+          }
         }
       ]
     },
     {
       "key": "client_id",
       "type": "string",
-      "label": { "en": "Yoto Client ID", "fr": "Client ID Yoto" },
+      "label": {
+        "en": "Yoto Client ID",
+        "fr": "Client ID Yoto"
+      },
       "description": {
         "en": "Client ID of your Yoto app (public client, authorization code flow with PKCE).",
         "fr": "Client ID de votre application Yoto (client public, flux authorization code avec PKCE)."
@@ -45,7 +61,10 @@
     {
       "key": "account",
       "type": "oauth2",
-      "label": { "en": "Yoto account", "fr": "Compte Yoto" },
+      "label": {
+        "en": "Yoto account",
+        "fr": "Compte Yoto"
+      },
       "description": {
         "en": "Click Connect, sign in on the Yoto page, and you are redirected back here. The link stays valid: the integration refreshes its token on its own.",
         "fr": "Cliquez sur Connecter, identifiez-vous sur la page Yoto, vous êtes ensuite redirigé ici. La liaison reste valide : l'intégration renouvelle son jeton toute seule."
@@ -55,7 +74,10 @@
     {
       "key": "poll_frequency",
       "type": "number",
-      "label": { "en": "Refresh interval (s)", "fr": "Intervalle de rafraîchissement (s)" },
+      "label": {
+        "en": "Refresh interval (s)",
+        "fr": "Intervalle de rafraîchissement (s)"
+      },
       "description": {
         "en": "How often each player is polled, in seconds. The Yoto API is a cloud API: stay above 60 s unless you really need more. Gladys schedules on fixed ticks (60 s at the slowest), so a value between 30 and 59 s is served by the 30 s tick and a longer one is honoured by the integration itself.",
         "fr": "Fréquence d'interrogation de chaque lecteur, en secondes. L'API Yoto est une API cloud : restez au-dessus de 60 s sauf besoin réel. Gladys planifie sur des cadences fixes (60 s au plus lent) : une valeur entre 30 et 59 s passe par la cadence 30 s, une valeur plus longue est respectée par l'intégration elle-même."
@@ -83,12 +105,18 @@
   "actions": [
     {
       "key": "test_connection",
-      "label": { "en": "Test the connection", "fr": "Tester la connexion" },
+      "label": {
+        "en": "Test the connection",
+        "fr": "Tester la connexion"
+      },
       "timeout_seconds": 30
     },
     {
       "key": "refresh_now",
-      "label": { "en": "Refresh all players now", "fr": "Rafraîchir tous les lecteurs" },
+      "label": {
+        "en": "Refresh all players now",
+        "fr": "Rafraîchir tous les lecteurs"
+      },
       "timeout_seconds": 60
     }
   ]
