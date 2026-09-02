@@ -101,8 +101,11 @@ export function buildPlayerDevice(gladys, player, config) {
       {
         name: 'Playing',
         external_id: ids.feature(FEATURE.PLAYING),
-        category: DEVICE_FEATURE_CATEGORIES.SENSOR,
-        type: DEVICE_FEATURE_TYPES.SENSOR.BINARY,
+        // There is no generic "sensor" category in Gladys: playback is the
+        // music playback state (0 = paused, 1 = playing), which the core and
+        // the UI already translate.
+        category: DEVICE_FEATURE_CATEGORIES.MUSIC,
+        type: DEVICE_FEATURE_TYPES.MUSIC.PLAYBACK_STATE,
         min: 0,
         max: 1,
         read_only: true,
@@ -159,8 +162,10 @@ export function buildPlayerDevice(gladys, player, config) {
       {
         name: 'Online',
         external_id: ids.feature(FEATURE.ONLINE),
-        category: DEVICE_FEATURE_CATEGORIES.SENSOR,
-        type: DEVICE_FEATURE_TYPES.SENSOR.BINARY,
+        // Gladys has no "reachable" category: INPUT/binary is the generic
+        // read-only on/off state the UI renders as Off/On.
+        category: DEVICE_FEATURE_CATEGORIES.INPUT,
+        type: DEVICE_FEATURE_TYPES.INPUT.BINARY,
         min: 0,
         max: 1,
         read_only: true,
