@@ -19,7 +19,13 @@ export function parseStatus(raw = {}) {
   const { deviceTemperature } = parseTemperaturePair(raw.temp);
   return {
     batteryLevel: asInteger(raw.batteryLevel),
+    // `charging` is 1 only while the battery is actually being filled: the
+    // firmware drops it back to 0 as soon as the battery is full, even with
+    // the player still on its dock / USB cable.
     isCharging: asBoolean(raw.charging),
+    // 0 = battery, 1 = v2 dock, 2 = USB-C, 3 = Qi dock. Anything but 0 means
+    // the player is plugged in, which is what the Yoto app shows.
+    powerSource: asInteger(raw.powerSrc),
     // `userVolume` is the level the user set; `volume` is the system one,
     // which the firmware also lowers on its own (night mode, volume limit).
     volume: asInteger(raw.userVolume ?? raw.volume),
@@ -33,6 +39,21 @@ export function parseStatus(raw = {}) {
     nightlightMode: raw.nightlightMode ?? null,
     updatedAt: raw.updatedAt ?? null,
   };
+}
+
+/**
+ * True when the player is on external power — what a user calls "en charge".
+ *
+ * Taking `charging` alone makes Gladys say "not charging" on a player sitting
+ * plugged on its dock with a full battery (the app says "Charged" there), so
+ * the power source wins whenever the firmware reports it: `charging` only
+ * distinguishes "filling up" from "full", both of which are plugged in.
+ */
+export function isCharging(status) {
+  if (status.powerSource !== null && status.powerSource !== undefined) {
+    return status.powerSource > 0 || status.isCharging === true;
+  }
+  return status.isCharging ?? null;
 }
 
 /** True when the player currently has a card (or a stream) loaded. */

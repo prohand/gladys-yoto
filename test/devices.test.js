@@ -20,6 +20,7 @@ const STATUS = {
     status: {
       batteryLevel: 87,
       charging: 0,
+      powerSrc: 0,
       userVolume: 42,
       cardInserted: 1,
       activeCard: 'h2Fbz',
@@ -133,6 +134,33 @@ test('polling publishes the player telemetry', async () => {
   assert.equal(stateOf(gladys, FEATURE.TEMPERATURE), 29);
   assert.equal(stateOf(gladys, FEATURE.WIFI), -58);
   assert.deepEqual(stateOf(gladys, FEATURE.CARD), { text: 'Le Gruffalo' });
+});
+
+test('a player left on its dock with a full battery is published as charging', async () => {
+  // The firmware clears `charging` once the battery is full, so the plug
+  // (`powerSrc`) is what tells the player apart from one running on battery —
+  // the Yoto app shows "Charged" here, Gladys used to show "Not charging".
+  const gladys = createFakeGladys();
+  const registry = new PlayerRegistry(
+    createFakeYotoApi({
+      devices: [PLAYER],
+      statuses: {
+        y2abc123: {
+          online: true,
+          status: { ...STATUS.y2abc123.status, batteryLevel: 100, charging: 0, powerSrc: 2 },
+          config: {},
+        },
+      },
+      cardTitles: { h2Fbz: 'Le Gruffalo' },
+    }),
+  );
+  await registry.refresh();
+  const device = registry.buildDiscoveredDevices(gladys, CONFIG)[0];
+
+  await registry.poll(gladys, device, CONFIG);
+
+  assert.equal(stateOf(gladys, FEATURE.CHARGING), 1);
+  assert.equal(stateOf(gladys, FEATURE.BATTERY), 100);
 });
 
 test('polling does not republish values that did not change', async () => {

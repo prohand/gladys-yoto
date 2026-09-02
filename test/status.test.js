@@ -1,11 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseStatus, isPlaying, parseTemperaturePair } from '../src/yoto/status.js';
+import { parseStatus, isPlaying, isCharging, parseTemperaturePair } from '../src/yoto/status.js';
 
 // A realistic `device.status` block, as the firmware reports it.
 const RAW_STATUS = {
   batteryLevel: 87,
   charging: 1,
+  powerSrc: 2,
   volume: 8,
   userVolume: 42,
   cardInserted: 1,
@@ -21,6 +22,7 @@ test('parseStatus maps the raw firmware keys', () => {
   const status = parseStatus(RAW_STATUS);
   assert.equal(status.batteryLevel, 87);
   assert.equal(status.isCharging, true);
+  assert.equal(status.powerSource, 2);
   assert.equal(status.cardInserted, 1);
   assert.equal(status.activeCard, 'h2Fbz');
   assert.equal(status.ambientLight, 120);
@@ -37,6 +39,7 @@ test('parseStatus returns null for values the player did not report', () => {
   const status = parseStatus({});
   assert.equal(status.batteryLevel, null);
   assert.equal(status.isCharging, null);
+  assert.equal(status.powerSource, null);
   assert.equal(status.volume, null);
   assert.equal(status.deviceTemperature, null);
   assert.equal(status.activeCard, null);
@@ -45,6 +48,23 @@ test('parseStatus returns null for values the player did not report', () => {
 test('parseStatus treats "none" as no card playing', () => {
   assert.equal(parseStatus({ activeCard: 'none' }).activeCard, null);
   assert.equal(parseStatus({ activeCard: '' }).activeCard, null);
+});
+
+test('isCharging follows the plug, not only the "filling up" flag', () => {
+  // The case the Yoto app shows as "Charged": plugged, battery full, so the
+  // firmware stopped charging.
+  assert.equal(isCharging(parseStatus({ charging: 0, powerSrc: 2, batteryLevel: 100 })), true);
+  // Docks count as plugged too.
+  assert.equal(isCharging(parseStatus({ charging: 0, powerSrc: 1 })), true);
+  assert.equal(isCharging(parseStatus({ charging: 0, powerSrc: 3 })), true);
+  // On battery: really not charging.
+  assert.equal(isCharging(parseStatus({ charging: 0, powerSrc: 0 })), false);
+  // Older firmware without `powerSrc`: fall back to the charging flag.
+  assert.equal(isCharging(parseStatus({ charging: 1 })), true);
+  assert.equal(isCharging(parseStatus({ charging: 0 })), false);
+  assert.equal(isCharging(parseStatus({})), null);
+  // Charging while `powerSrc` is missing from that same report.
+  assert.equal(isCharging(parseStatus({ charging: 1, powerSrc: 0 })), true);
 });
 
 test('isPlaying covers physical, remote and streaming cards', () => {
