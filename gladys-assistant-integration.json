@@ -57,8 +57,8 @@
       "type": "number",
       "label": { "en": "Refresh interval (s)", "fr": "Intervalle de rafraîchissement (s)" },
       "description": {
-        "en": "How often each player is polled, in seconds. The Yoto API is a cloud API: stay above 60 s unless you really need more.",
-        "fr": "Fréquence d'interrogation de chaque lecteur, en secondes. L'API Yoto est une API cloud : restez au-dessus de 60 s sauf besoin réel."
+        "en": "How often each player is polled, in seconds. The Yoto API is a cloud API: stay above 60 s unless you really need more. Gladys schedules on fixed ticks (60 s at the slowest), so a value between 30 and 59 s is served by the 30 s tick and a longer one is honoured by the integration itself.",
+        "fr": "Fréquence d'interrogation de chaque lecteur, en secondes. L'API Yoto est une API cloud : restez au-dessus de 60 s sauf besoin réel. Gladys planifie sur des cadences fixes (60 s au plus lent) : une valeur entre 30 et 59 s passe par la cadence 30 s, une valeur plus longue est respectée par l'intégration elle-même."
       },
       "required": false,
       "default": 120,

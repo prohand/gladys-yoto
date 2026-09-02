@@ -31,10 +31,13 @@ function stateOf(gladys, key) {
   return gladys.published.filter((entry) => entry.featureExternalId === id).pop()?.state;
 }
 
-test('buildPlayerDevice carries the poll frequency of the config', () => {
+test('buildPlayerDevice asks Gladys to poll it on an accepted frequency', () => {
   const gladys = createFakeGladys();
   const device = buildPlayerDevice(gladys, PLAYER, CONFIG);
-  assert.equal(device.poll_frequency, 180);
+  // 180 s is not a frequency Gladys schedules: the device rides the 60 s tick
+  // and the registry skips the ticks in between.
+  assert.equal(device.should_poll, true);
+  assert.equal(device.poll_frequency, 60000);
   assert.equal(device.name, 'Chambre de Léa');
 });
 
@@ -104,9 +107,65 @@ test('polling does not republish values that did not change', async () => {
 
   await registry.poll(gladys, device, CONFIG);
   const afterFirstPoll = gladys.published.length;
+  registry.lastPollAt.clear(); // the interval is not what is tested here
   await registry.poll(gladys, device, CONFIG);
 
   assert.equal(gladys.published.length, afterFirstPoll, 'nothing changed: nothing republished');
+});
+
+test('a Gladys tick landing before the configured interval is skipped', async () => {
+  const gladys = createFakeGladys();
+  const api = createFakeYotoApi({ devices: [PLAYER], statuses: STATUS });
+  const registry = new PlayerRegistry(api);
+  await registry.refresh();
+  const device = registry.buildDiscoveredDevices(gladys, CONFIG)[0];
+
+  // CONFIG asks for 180 s, Gladys ticks every 60 s: only the first read hits
+  // the Yoto cloud.
+  await registry.poll(gladys, device, CONFIG);
+  await registry.poll(gladys, device, CONFIG);
+
+  assert.equal(api.calls.filter((call) => call.method === 'getDeviceConfig').length, 1);
+});
+
+test('a tick firing slightly early still polls (scheduler drift)', () => {
+  const gladys = createFakeGladys();
+  const registry = new PlayerRegistry(createFakeYotoApi({ devices: [PLAYER] }));
+  const externalId = playerExternalIds(gladys, PLAYER.deviceId).device;
+  const start = Date.now();
+  registry.lastPollAt.set(externalId, start);
+
+  assert.equal(registry.isDue(externalId, CONFIG, start + 120_000), false);
+  // 180 s minus the 5 s tolerance: the tick must not be pushed to 240 s.
+  assert.equal(registry.isDue(externalId, CONFIG, start + 179_000), true);
+  assert.equal(registry.isDue(externalId, CONFIG, start + 180_000), true);
+});
+
+test('"refresh now" reads every player whatever the interval', async () => {
+  const gladys = createFakeGladys();
+  const api = createFakeYotoApi({ devices: [PLAYER], statuses: STATUS });
+  const registry = new PlayerRegistry(api);
+  await registry.refresh();
+  const device = registry.buildDiscoveredDevices(gladys, CONFIG)[0];
+
+  await registry.poll(gladys, device, CONFIG);
+  await registry.pollAll(gladys, CONFIG);
+
+  assert.equal(api.calls.filter((call) => call.method === 'getDeviceConfig').length, 2);
+});
+
+test('a reconnection re-arms the poll instead of waiting for the interval', async () => {
+  const gladys = createFakeGladys();
+  const api = createFakeYotoApi({ devices: [PLAYER], statuses: STATUS });
+  const registry = new PlayerRegistry(api);
+  await registry.refresh();
+  const device = registry.buildDiscoveredDevices(gladys, CONFIG)[0];
+
+  await registry.poll(gladys, device, CONFIG);
+  registry.clearCache();
+  await registry.poll(gladys, device, CONFIG);
+
+  assert.equal(api.calls.filter((call) => call.method === 'getDeviceConfig').length, 2);
 });
 
 test('the card title falls back to the card id when the library is not readable', async () => {

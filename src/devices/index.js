@@ -6,10 +6,13 @@
 // Yoto app shows up on the next scan.
 //
 // The registry owns what has to survive between two polls: the known players,
-// the last published values (rate-limit friendly) and the card-title cache.
+// the last published values (rate-limit friendly), the card-title cache and
+// the date of the last poll of each player (Gladys never ticks slower than a
+// minute: a longer interval is enforced here).
 // -----------------------------------------------------------------------------
 
 import { createLogger } from '@gladysassistant/integration-sdk';
+import { gladysPollFrequency } from '../config.js';
 import {
   buildPlayerDevice,
   playerExternalIds,
@@ -28,6 +31,8 @@ export class PlayerRegistry {
     this.players = new Map();
     this.cache = new StateCache();
     this.cardTitles = new Map();
+    /** @type {Map<string, number>} Gladys external_id -> date of the last poll */
+    this.lastPollAt = new Map();
   }
 
   /** Re-read the player list from the Yoto account. */
@@ -63,6 +68,10 @@ export class PlayerRegistry {
    * before giving up.
    */
   async poll(gladys, device, config) {
+    if (!this.isDue(device.external_id, config)) {
+      logger.debug(`${device.external_id}: too early, the configured interval is not elapsed yet`);
+      return;
+    }
     let player = this.findPlayer(gladys, device.external_id);
     if (!player) {
       await this.refresh();
@@ -72,6 +81,7 @@ export class PlayerRegistry {
       logger.warn(`No Yoto player matches ${device.external_id} (removed from the account?)`);
       return;
     }
+    this.lastPollAt.set(device.external_id, Date.now());
     await pollPlayer(gladys, player, config, {
       api: this.api,
       cache: this.cache,
@@ -79,9 +89,29 @@ export class PlayerRegistry {
     });
   }
 
-  /** Poll every known player (manifest action "refresh_now"). */
+  /**
+   * Gladys ticks the device at most every 60 s (its slowest scheduled
+   * frequency), so an interval above one minute has to be enforced here: the
+   * ticks landing before the configured interval are simply skipped.
+   *
+   * The tolerance absorbs the drift of the core scheduler: a tick firing a few
+   * milliseconds late must not push a 120 s interval to the next 60 s tick,
+   * which would turn it into 180 s.
+   */
+  isDue(externalId, config, now = Date.now()) {
+    const last = this.lastPollAt.get(externalId);
+    if (last === undefined) {
+      return true;
+    }
+    const tick = gladysPollFrequency(config.poll_frequency);
+    const tolerance = Math.min(5000, tick / 2);
+    return now - last >= config.poll_frequency * 1000 - tolerance;
+  }
+
+  /** Poll every known player (manifest action "refresh_now"), interval or not. */
   async pollAll(gladys, config) {
     for (const player of this.players.values()) {
+      this.lastPollAt.set(playerExternalIds(gladys, player.deviceId).device, Date.now());
       await pollPlayer(gladys, player, config, {
         api: this.api,
         cache: this.cache,
@@ -94,6 +124,8 @@ export class PlayerRegistry {
   /** Values must be re-published after a reconnection: Gladys may have missed them. */
   clearCache() {
     this.cache.clear();
+    // Same reason: the next tick must poll instead of waiting for the interval.
+    this.lastPollAt.clear();
   }
 }
 

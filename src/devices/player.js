@@ -8,7 +8,8 @@
 // declared `read_only: true` so the Gladys UI never shows a control that
 // would silently do nothing.
 //
-// Refresh path: Gladys calls `onPoll` every `poll_frequency` seconds ->
+// Refresh path: Gladys calls `onPoll` on the device tick (`poll_frequency`,
+// in milliseconds, chosen from the fixed list the core accepts) ->
 // (optionally) ask the player to report -> read the shadow -> publish the
 // values that CHANGED (the host API rate-limits states at 300/minute).
 // -----------------------------------------------------------------------------
@@ -19,6 +20,7 @@ import {
   DEVICE_FEATURE_TYPES,
   DEVICE_FEATURE_UNITS,
 } from '@gladysassistant/integration-sdk';
+import { gladysPollFrequency } from '../config.js';
 import { parseStatus, isPlaying } from '../yoto/status.js';
 
 export const DEVICE_TYPE = 'yoto-player';
@@ -53,8 +55,12 @@ export function buildPlayerDevice(gladys, player, config) {
   return {
     name: player.name,
     external_id: ids.device,
-    // Gladys calls onPoll at this interval (seconds).
-    poll_frequency: config.poll_frequency,
+    // A device is polled only when it asks for it, on one of the fixed ticks
+    // Gladys knows (milliseconds): anything else is refused by the core with
+    // "invalid poll frequency". A slower interval than the 60 s ceiling is
+    // honoured by the registry, which skips the ticks in between.
+    should_poll: true,
+    poll_frequency: gladysPollFrequency(config.poll_frequency),
     features: [
       {
         name: 'Battery',

@@ -43,10 +43,12 @@ Yoto app: …` donne l'URL exacte à coller dans les **Allowed callback URLs**
 Réglages disponibles :
 
 - **Intervalle de rafraîchissement** (`poll_frequency`) — de 30 à 3600
-  secondes, 120 par défaut. C'est la fréquence à laquelle Gladys interroge
-  chaque lecteur. L'API Yoto est une API cloud : restez au-dessus de 60
-  secondes sauf besoin réel. Le changement est pris en compte immédiatement,
-  sans recréer les appareils.
+  secondes, 120 par défaut. C'est la fréquence à laquelle chaque lecteur est
+  lu. L'API Yoto est une API cloud : restez au-dessus de 60 secondes sauf
+  besoin réel. Gladys planifie sur des cadences fixes (60 secondes au plus
+  lent) : une valeur entre 30 et 59 secondes passe par la cadence 30 secondes,
+  et au-delà de 60 secondes c'est l'intégration qui respecte l'intervalle. Le
+  changement est pris en compte immédiatement, sans recréer les appareils.
 - **Demander au lecteur de se rafraîchir avant lecture** — envoie une demande
   de statut au lecteur avant chaque interrogation, pour lire des valeurs
   fraîches plutôt que les dernières remontées. Décochez si votre application
