@@ -117,6 +117,13 @@ export function buildPlayerDevice(gladys, player, config) {
         external_id: ids.feature(FEATURE.CARD),
         category: DEVICE_FEATURE_CATEGORIES.TEXT,
         type: DEVICE_FEATURE_TYPES.TEXT.TEXT,
+        // Gladys stores min/max as NOT NULL columns for every feature, text
+        // included: leaving them out makes the core refuse the whole device
+        // with "t_device_feature.min cannot be null". The value carried here
+        // is a string, so the numeric range is meaningless — 0/0 is the
+        // neutral pair the core uses for text features.
+        min: 0,
+        max: 0,
         read_only: true,
         has_feedback: false,
         keep_history: true,
