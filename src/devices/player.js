@@ -190,6 +190,9 @@ export function buildPlayerDevice(gladys, player, config) {
  *   - api       : YotoApi
  *   - cache     : StateCache, so unchanged values are not re-published
  *   - cardTitles: Map<cardId, title>, so a card title is fetched once
+ * @returns {Promise<object>} the snapshot of the player (see buildSnapshot),
+ *   which the dashboard widgets, the scene triggers and the scene actions
+ *   read instead of calling Yoto again
  */
 export async function pollPlayer(gladys, player, config, { api, cache, cardTitles }) {
   const ids = playerExternalIds(gladys, player.deviceId);
@@ -226,34 +229,62 @@ export async function pollPlayer(gladys, player, config, { api, cache, cardTitle
     await gladys.publishStates(numericStates);
   }
 
-  await publishCardPlaying(gladys, ids, status, { api, cache, cardTitles });
-}
-
-/**
- * The text feature shows the title of the card being played — the id alone
- * ("h2Fbz") means nothing to a user. The title never changes for a given card,
- * so it is fetched once and memoized; without the library scope we degrade to
- * the id rather than losing the feature.
- */
-async function publishCardPlaying(gladys, ids, status, { api, cache, cardTitles }) {
+  const cardTitle = await resolveCardTitle(status.activeCard, { api, cardTitles });
+  // The text feature shows a dash rather than an empty string: Gladys would
+  // otherwise keep displaying the previous title.
+  const text = cardTitle ?? '-';
   const featureId = ids.feature(FEATURE.CARD);
-  let text = '-';
-
-  if (status.activeCard) {
-    if (!cardTitles.has(status.activeCard)) {
-      try {
-        cardTitles.set(status.activeCard, await api.getCardTitle(status.activeCard));
-      } catch (err) {
-        logger.debug(`Card title unavailable for ${status.activeCard}: ${err.message}`);
-        cardTitles.set(status.activeCard, null);
-      }
-    }
-    text = cardTitles.get(status.activeCard) ?? status.activeCard;
-  }
-
   if (cache.changed(featureId, text)) {
     await gladys.publishState(featureId, { text });
   }
+
+  return buildSnapshot(player, online, status, cardTitle);
+}
+
+/**
+ * Everything the other surfaces need to know about one player, in plain
+ * values. Unknown values stay `null`, as in parseStatus.
+ */
+export function buildSnapshot(player, online, status, cardTitle) {
+  const playing = isPlaying(status);
+  return {
+    deviceId: player.deviceId,
+    name: player.name,
+    online,
+    batteryLevel: status.batteryLevel,
+    charging: isCharging(status),
+    volume: status.volume,
+    playing,
+    // A card id without "something is loaded" is a leftover of the last card:
+    // only a playing player has a current card.
+    cardId: playing === false ? null : status.activeCard,
+    cardTitle: playing === false ? null : cardTitle,
+    ambientLight: status.ambientLight,
+    deviceTemperature: status.deviceTemperature,
+    wifiStrength: status.wifiStrength,
+    readAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * The title of the card being played — the id alone ("h2Fbz") means nothing
+ * to a user. The title never changes for a given card, so it is fetched once
+ * and memoized; without the library scope we degrade to the id rather than
+ * losing the information.
+ */
+async function resolveCardTitle(cardId, { api, cardTitles }) {
+  if (!cardId) {
+    return null;
+  }
+  if (!cardTitles.has(cardId)) {
+    try {
+      cardTitles.set(cardId, await api.getCardTitle(cardId));
+    } catch (err) {
+      logger.debug(`Card title unavailable for ${cardId}: ${err.message}`);
+      cardTitles.set(cardId, null);
+    }
+  }
+  return cardTitles.get(cardId) ?? cardId;
 }
 
 function booleanToState(value) {

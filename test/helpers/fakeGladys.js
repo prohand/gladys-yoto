@@ -4,15 +4,21 @@
 // It reproduces the only surface the device layer relies on:
 //   - externalIds(type, platformId) -> { device, feature(key) }
 //   - publishState / publishStates  -> record calls so tests can assert them
+//   - publishSceneEvent             -> record the scene events
+//   - requestWidgetRefresh          -> record the widget nudges
 // This lets us test the wiring logic (discovery payloads, dispatch,
 // deduplication) without a running Gladys server or a real WebSocket.
 // -----------------------------------------------------------------------------
 
-export function createFakeGladys() {
+export function createFakeGladys({ failSceneEvents = false } = {}) {
   const published = [];
+  const sceneEvents = [];
+  const widgetRefreshes = [];
 
   return {
     published,
+    sceneEvents,
+    widgetRefreshes,
 
     externalIds(type, platformId) {
       const device = `ext:yoto:${type}:${platformId}`;
@@ -33,6 +39,17 @@ export function createFakeGladys() {
           state: state.state,
         });
       }
+    },
+
+    async publishSceneEvent(key, data) {
+      if (failSceneEvents) {
+        throw new Error('429 too many events');
+      }
+      sceneEvents.push({ key, data });
+    },
+
+    requestWidgetRefresh(key) {
+      widgetRefreshes.push(key);
     },
   };
 }

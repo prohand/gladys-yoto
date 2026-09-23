@@ -8,6 +8,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { DEFAULT_CONFIG } from '../src/config.js';
+import { SCENE_ACTION, SCENE_TRIGGER, playerStatusOutputs } from '../src/scenes.js';
+import { WIDGET } from '../src/widgets.js';
 
 const manifest = JSON.parse(
   await readFile(new URL('../gladys-assistant-integration.json', import.meta.url), 'utf8'),
@@ -82,4 +84,55 @@ test('the manifest version matches the docker image tag', () => {
     manifest.docker_image.endsWith(`:${manifest.version}`),
     'the indexer and the published image must stay in lockstep',
   );
+});
+
+test('widgets, scene triggers and scene actions require Gladys >= 5.1.0', () => {
+  const [, major, minor] = manifest.gladys_version.match(/>=\s*(\d+)\.(\d+)\.\d+/).map(Number);
+  assert.ok(
+    major > 5 || (major === 5 && minor >= 1),
+    `got "${manifest.gladys_version}", the capabilities need 5.1.0`,
+  );
+});
+
+test('every manifest widget is served in index.js, and only those', () => {
+  const keys = manifest.widgets.map((widget) => widget.key);
+  assert.deepEqual(keys.sort(), Object.values(WIDGET).sort());
+  for (const key of keys) {
+    const constant = Object.keys(WIDGET).find((name) => WIDGET[name] === key);
+    assert.ok(indexSource.includes(`gladys.onWidgetGet(WIDGET.${constant},`), `${key}: no content`);
+    assert.ok(
+      indexSource.includes(`gladys.onWidgetAction(WIDGET.${constant},`),
+      `${key}: no action`,
+    );
+  }
+});
+
+test('every manifest scene action has a handler, and only those', () => {
+  const keys = manifest.scene_actions.map((action) => action.key);
+  assert.deepEqual(keys.sort(), Object.values(SCENE_ACTION).sort());
+  for (const name of Object.keys(SCENE_ACTION)) {
+    assert.ok(
+      indexSource.includes(`gladys.onSceneAction(SCENE_ACTION.${name},`),
+      `${SCENE_ACTION[name]}: no handler`,
+    );
+  }
+});
+
+test('the scene triggers declared are the ones the registry fires', () => {
+  const keys = manifest.scene_triggers.map((trigger) => trigger.key);
+  assert.deepEqual(keys.sort(), Object.values(SCENE_TRIGGER).sort());
+  for (const trigger of manifest.scene_triggers) {
+    // The `player` filter compares against the device external_id the
+    // registry puts in every event.
+    assert.ok(trigger.fields.some((field) => field.key === 'player' && field.source === 'devices'));
+    assert.ok(trigger.variables.some((variable) => variable.key === 'player_name'));
+  }
+});
+
+test('get_player_status declares exactly the outputs the handler returns', () => {
+  const action = manifest.scene_actions.find(
+    (entry) => entry.key === SCENE_ACTION.GET_PLAYER_STATUS,
+  );
+  const returned = Object.keys(playerStatusOutputs({ name: 'x' }));
+  assert.deepEqual(action.outputs.map((output) => output.key).sort(), returned.sort());
 });

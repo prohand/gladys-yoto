@@ -12,7 +12,12 @@ commandes de lecture (play, pause, volume) : rien n'est donc pilotable depuis
 Gladys, et les capteurs sont déclarés en lecture seule pour ne pas afficher de
 bouton inopérant.
 
+En plus des appareils : deux widgets de tableau de bord, trois déclencheurs et
+deux actions de scène (voir plus bas).
+
 ## Prérequis
+
+Gladys Assistant **5.1** ou plus récent.
 
 Une application sur le portail développeur Yoto (gratuit) :
 
@@ -64,6 +69,59 @@ l'image.
   lecteurs trouvés, avec leurs noms.
 - **Rafraîchir tous les lecteurs** — force une interrogation immédiate de tous
   les lecteurs, sans attendre le prochain cycle.
+
+## Widgets du tableau de bord
+
+Nécessite Gladys 5.1 ou plus récent. Ajoutez-les depuis l'éditeur du tableau
+de bord :
+
+- **Lecteurs Yoto** — tous les lecteurs du compte dans une seule carte : la
+  carte en cours de lecture, le niveau de batterie (vert, orange sous 50 %,
+  rouge sous 20 %, un ⚡ quand il est branché) et s'il est en ligne. Touchez
+  une ligne pour le détail (volume, température, luminosité, Wi-Fi).
+- **Lecteur Yoto** — un seul lecteur, choisi dans les réglages du widget :
+  batterie, volume et température mis à jour en direct, la courbe de batterie
+  des dernières 24 heures, et l'état de lecture, d'alimentation et de
+  connexion.
+
+Les deux ont un bouton **Rafraîchir** qui lit les lecteurs tout de suite. Les
+widgets affichent la dernière lecture : ouvrir un tableau de bord n'interroge
+jamais Yoto.
+
+## Scènes
+
+Nécessite Gladys 5.1 ou plus récent.
+
+Déclencheurs (le filtre **Lecteur** est facultatif : vide = n'importe quel
+lecteur) :
+
+- **Une carte démarre sur un lecteur Yoto** — filtre facultatif sur le titre
+  exact de la carte. Variables : nom du lecteur, titre de la carte,
+  identifiant de la carte.
+- **Un lecteur Yoto arrête la lecture** — variables : nom du lecteur, titre et
+  identifiant de la carte qui jouait.
+- **Batterie faible d'un lecteur Yoto (sous 20 %)** — se déclenche une fois
+  quand la batterie passe sous 20 % alors que le lecteur n'est pas branché ;
+  ne se redéclenche qu'après une charge (ou un retour au-dessus de 25 %).
+  Variables : nom du lecteur, niveau de batterie.
+
+Les événements sont détectés à chaque rafraîchissement (toutes les 120 s par
+défaut) : un déclencheur peut donc arriver avec jusqu'à un intervalle de
+retard. Rien ne se déclenche à la première lecture après un redémarrage.
+
+Actions :
+
+- **Lire un lecteur Yoto** — lit le lecteur maintenant et passe ses valeurs aux
+  étapes suivantes : nom, en ligne, batterie, sur secteur, volume, en lecture,
+  titre de la carte, température, signal Wi-Fi. Pratique pour une condition
+  (« si la batterie est sous 30 %, envoyer un message ») ou un message
+  (« {{player_name}} joue {{card_title}} »).
+- **Rafraîchir tous les lecteurs Yoto** — lit tous les lecteurs maintenant ;
+  renvoie le nombre de lecteurs lus.
+
+Lancer une carte, mettre en pause ou changer le volume depuis Gladys n'est pas
+possible : l'API publique Yoto ne propose pas ces commandes (elles passent par
+un canal privé de Yoto).
 
 ## Dépannage
 

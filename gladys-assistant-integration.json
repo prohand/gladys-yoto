@@ -8,7 +8,7 @@
   },
   "version": "1.1.1",
   "docker_image": "ghcr.io/prohand/gladys-yoto:1.1.1",
-  "gladys_version": ">=4.86.0",
+  "gladys_version": ">=5.1.0",
   "cover_image": "https://raw.githubusercontent.com/prohand/gladys-yoto/main/cover.png",
   "categories": [
     "multimedia"
@@ -118,6 +118,318 @@
         "fr": "Rafraîchir tous les lecteurs"
       },
       "timeout_seconds": 60
+    }
+  ],
+  "widgets": [
+    {
+      "key": "players",
+      "label": {
+        "en": "Yoto players",
+        "fr": "Lecteurs Yoto"
+      },
+      "icon": "music",
+      "description": {
+        "en": "Every player of the account: what it plays, its battery, online or not.",
+        "fr": "Tous les lecteurs du compte : ce qu'ils jouent, leur batterie, en ligne ou non."
+      },
+      "action_timeout_seconds": 60
+    },
+    {
+      "key": "player",
+      "label": {
+        "en": "Yoto player",
+        "fr": "Lecteur Yoto"
+      },
+      "icon": "speaker",
+      "description": {
+        "en": "One player: battery, volume, temperature, 24 h battery curve and playback state.",
+        "fr": "Un lecteur : batterie, volume, température, courbe de batterie sur 24 h et état de lecture."
+      },
+      "settings": [
+        {
+          "key": "player",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Player",
+            "fr": "Lecteur"
+          },
+          "required": true
+        }
+      ],
+      "action_timeout_seconds": 30
+    }
+  ],
+  "scene_triggers": [
+    {
+      "key": "card_started",
+      "label": {
+        "en": "A card starts on a Yoto player",
+        "fr": "Une carte démarre sur un lecteur Yoto"
+      },
+      "fields": [
+        {
+          "key": "player",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Player",
+            "fr": "Lecteur"
+          },
+          "description": {
+            "en": "Leave empty for any player.",
+            "fr": "Laissez vide pour n'importe quel lecteur."
+          }
+        },
+        {
+          "key": "card_title",
+          "type": "string",
+          "label": {
+            "en": "Card title",
+            "fr": "Titre de la carte"
+          },
+          "description": {
+            "en": "Exact title, leave empty for any card.",
+            "fr": "Titre exact, laissez vide pour n'importe quelle carte."
+          }
+        }
+      ],
+      "variables": [
+        {
+          "key": "player_name",
+          "type": "string",
+          "label": {
+            "en": "Player name",
+            "fr": "Nom du lecteur"
+          }
+        },
+        {
+          "key": "card_title",
+          "type": "string",
+          "label": {
+            "en": "Card title",
+            "fr": "Titre de la carte"
+          }
+        },
+        {
+          "key": "card_id",
+          "type": "string",
+          "label": {
+            "en": "Card id",
+            "fr": "Identifiant de la carte"
+          }
+        }
+      ]
+    },
+    {
+      "key": "card_stopped",
+      "label": {
+        "en": "A Yoto player stops playing",
+        "fr": "Un lecteur Yoto arrête la lecture"
+      },
+      "fields": [
+        {
+          "key": "player",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Player",
+            "fr": "Lecteur"
+          },
+          "description": {
+            "en": "Leave empty for any player.",
+            "fr": "Laissez vide pour n'importe quel lecteur."
+          }
+        }
+      ],
+      "variables": [
+        {
+          "key": "player_name",
+          "type": "string",
+          "label": {
+            "en": "Player name",
+            "fr": "Nom du lecteur"
+          }
+        },
+        {
+          "key": "card_title",
+          "type": "string",
+          "label": {
+            "en": "Card title",
+            "fr": "Titre de la carte"
+          }
+        },
+        {
+          "key": "card_id",
+          "type": "string",
+          "label": {
+            "en": "Card id",
+            "fr": "Identifiant de la carte"
+          }
+        }
+      ]
+    },
+    {
+      "key": "battery_low",
+      "label": {
+        "en": "Yoto player battery low (under 20 %)",
+        "fr": "Batterie faible d'un lecteur Yoto (sous 20 %)"
+      },
+      "fields": [
+        {
+          "key": "player",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Player",
+            "fr": "Lecteur"
+          },
+          "description": {
+            "en": "Leave empty for any player.",
+            "fr": "Laissez vide pour n'importe quel lecteur."
+          }
+        }
+      ],
+      "variables": [
+        {
+          "key": "player_name",
+          "type": "string",
+          "label": {
+            "en": "Player name",
+            "fr": "Nom du lecteur"
+          }
+        },
+        {
+          "key": "battery",
+          "type": "number",
+          "label": {
+            "en": "Battery (%)",
+            "fr": "Batterie (%)"
+          }
+        }
+      ]
+    }
+  ],
+  "scene_actions": [
+    {
+      "key": "get_player_status",
+      "label": {
+        "en": "Read a Yoto player",
+        "fr": "Lire un lecteur Yoto"
+      },
+      "description": {
+        "en": "Reads the player now and hands its values to the next steps of the scene.",
+        "fr": "Lit le lecteur maintenant et passe ses valeurs aux étapes suivantes de la scène."
+      },
+      "timeout_seconds": 45,
+      "fields": [
+        {
+          "key": "player",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Player",
+            "fr": "Lecteur"
+          },
+          "required": true
+        }
+      ],
+      "outputs": [
+        {
+          "key": "player_name",
+          "type": "string",
+          "label": {
+            "en": "Player name",
+            "fr": "Nom du lecteur"
+          }
+        },
+        {
+          "key": "online",
+          "type": "boolean",
+          "label": {
+            "en": "Online",
+            "fr": "En ligne"
+          }
+        },
+        {
+          "key": "battery",
+          "type": "number",
+          "label": {
+            "en": "Battery (%)",
+            "fr": "Batterie (%)"
+          }
+        },
+        {
+          "key": "charging",
+          "type": "boolean",
+          "label": {
+            "en": "Plugged in",
+            "fr": "Sur secteur"
+          }
+        },
+        {
+          "key": "volume",
+          "type": "number",
+          "label": {
+            "en": "Volume (%)",
+            "fr": "Volume (%)"
+          }
+        },
+        {
+          "key": "playing",
+          "type": "boolean",
+          "label": {
+            "en": "Playing",
+            "fr": "En lecture"
+          }
+        },
+        {
+          "key": "card_title",
+          "type": "string",
+          "label": {
+            "en": "Card playing",
+            "fr": "Carte en cours"
+          }
+        },
+        {
+          "key": "temperature",
+          "type": "number",
+          "label": {
+            "en": "Device temperature (°C)",
+            "fr": "Température de l'appareil (°C)"
+          }
+        },
+        {
+          "key": "wifi_signal",
+          "type": "number",
+          "label": {
+            "en": "Wi-Fi signal (dBm)",
+            "fr": "Signal Wi-Fi (dBm)"
+          }
+        }
+      ]
+    },
+    {
+      "key": "refresh_players",
+      "label": {
+        "en": "Refresh all Yoto players",
+        "fr": "Rafraîchir tous les lecteurs Yoto"
+      },
+      "description": {
+        "en": "Reads every player now, without waiting for the next refresh.",
+        "fr": "Lit tous les lecteurs maintenant, sans attendre le prochain rafraîchissement."
+      },
+      "timeout_seconds": 90,
+      "outputs": [
+        {
+          "key": "count",
+          "type": "number",
+          "label": {
+            "en": "Players refreshed",
+            "fr": "Lecteurs rafraîchis"
+          }
+        }
+      ]
     }
   ]
 }

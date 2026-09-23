@@ -11,7 +11,12 @@ The public Yoto API reports the player telemetry but not the playback commands
 (play, pause, volume), so nothing is controllable from Gladys — the features are
 declared read-only rather than showing a button that would do nothing.
 
+On top of the devices: two dashboard widgets, three scene triggers and two
+scene actions (see below).
+
 ## Requirements
+
+Gladys Assistant **5.1** or later.
 
 A free app on the Yoto developer dashboard:
 
@@ -58,6 +63,53 @@ survives a restart or an image update.
   were found, with their names.
 - **Refresh all players now** — polls every player immediately, without waiting
   for the next cycle.
+
+## Dashboard widgets
+
+Requires Gladys 5.1 or later. Add them from the dashboard editor:
+
+- **Yoto players** — every player of the account in one card: the card being
+  played, the battery level (green, orange under 50 %, red under 20 %, a ⚡
+  when plugged in) and whether it is online. Tap a row for the details
+  (volume, temperature, light, Wi-Fi).
+- **Yoto player** — one player, chosen in the widget settings: battery,
+  volume and temperature tiles updated live, the battery curve of the last
+  24 hours, and the playback, power and connection state.
+
+Both have a **Refresh** button that reads the players right away. The widgets
+are drawn from the last reading: opening a dashboard never queries Yoto.
+
+## Scenes
+
+Requires Gladys 5.1 or later.
+
+Triggers (the **Player** filter is optional: empty means any player):
+
+- **A card starts on a Yoto player** — optional filter on the exact card
+  title. Variables: player name, card title, card id.
+- **A Yoto player stops playing** — variables: player name, title and id of
+  the card that was playing.
+- **Yoto player battery low (under 20 %)** — fires once when the battery
+  drops under 20 % while the player is not plugged in; fires again only after
+  a charge (or back above 25 %). Variables: player name, battery level.
+
+Events are detected on each refresh (every 120 s by default), so a trigger can
+fire up to one refresh interval late. Nothing fires on the first reading after
+a restart.
+
+Actions:
+
+- **Read a Yoto player** — reads the player now and hands its values to the
+  next steps: name, online, battery, plugged in, volume, playing, card title,
+  temperature, Wi-Fi signal. Handy for a condition ("if the battery is under
+  30 %, send a message") or a message ("{{player_name}} is playing
+  {{card_title}}").
+- **Refresh all Yoto players** — reads every player now; returns how many were
+  read.
+
+Starting a card, pausing or changing the volume from Gladys is not possible:
+the public Yoto API does not offer these commands (they go through a private
+Yoto channel).
 
 ## Troubleshooting
 

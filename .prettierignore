@@ -2,3 +2,5 @@ node_modules/
 package-lock.json
 data/
 *.log
+# Rewritten by jq in the release workflow: its layout, not Prettier's, wins.
+gladys-assistant-integration.json
