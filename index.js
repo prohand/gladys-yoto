@@ -25,6 +25,13 @@ import {
 } from './src/yoto/auth.js';
 import { YotoApi } from './src/yoto/api.js';
 import { PlayerRegistry } from './src/devices/index.js';
+import { SCENE_ACTION, playerStatusOutputs } from './src/scenes.js';
+import {
+  WIDGET,
+  WIDGET_ACTION_REFRESH,
+  buildPlayerContent,
+  buildPlayersContent,
+} from './src/widgets.js';
 
 const gladys = new GladysIntegration();
 
@@ -189,15 +196,99 @@ gladys.onAction('test_connection', async () => {
 });
 
 gladys.onAction('refresh_now', async () => {
-  if (registry.players.size === 0) {
-    await registry.refresh();
-  }
-  const count = await registry.pollAll(gladys, config);
+  const count = await refreshAllPlayers();
   return {
     en: `${count} player(s) refreshed.`,
     fr: `${count} lecteur(s) rafraîchi(s).`,
   };
 });
+
+/** Read every player now, interval or not; returns how many were read. */
+async function refreshAllPlayers() {
+  if (registry.players.size === 0) {
+    await registry.refresh();
+  }
+  return registry.pollAll(gladys, config);
+}
+
+// --- Dashboard widgets (Gladys >= 5.1) ---------------------------------------
+// The content is drawn from the snapshots of the last polls: opening a
+// dashboard costs no Yoto call. The registry nudges both widgets when a poll
+// changes what they show.
+gladys.onWidgetGet(WIDGET.PLAYERS, async () => {
+  if (registry.players.size === 0 && tokenStore.linked) {
+    await registry.refresh();
+  }
+  return buildPlayersContent([...registry.players.values()], registry.snapshots);
+});
+
+gladys.onWidgetGet(WIDGET.PLAYER, async ({ settings }) => {
+  const player = await registry.resolvePlayer(gladys, settings.player);
+  return buildPlayerContent(gladys, player, player && registry.snapshots.get(player.deviceId));
+});
+
+gladys.onWidgetAction(WIDGET.PLAYERS, async (actionKey) => {
+  assertWidgetAction(actionKey);
+  const count = await withYotoErrors(refreshAllPlayers(), 'Widget refresh failed');
+  return {
+    en: `${count} player(s) refreshed.`,
+    fr: `${count} lecteur(s) rafraîchi(s).`,
+  };
+});
+
+gladys.onWidgetAction(WIDGET.PLAYER, async (actionKey, params, { settings }) => {
+  assertWidgetAction(actionKey);
+  const player = await findPlayerOrThrow(settings.player);
+  await withYotoErrors(registry.pollOne(gladys, player, config), 'Widget refresh failed');
+  return { en: `${player.name} refreshed.`, fr: `${player.name} rafraîchi.` };
+});
+
+function assertWidgetAction(actionKey) {
+  if (actionKey !== WIDGET_ACTION_REFRESH) {
+    throw new Error(`Unknown widget action "${actionKey}"`);
+  }
+}
+
+// --- Scene actions (Gladys >= 5.1) -------------------------------------------
+// The scene triggers are fired by the registry itself, on the poll that sees
+// the transition (card started/stopped, battery low).
+gladys.onSceneAction(SCENE_ACTION.GET_PLAYER_STATUS, async (fields) => {
+  const player = await findPlayerOrThrow(fields.player);
+  // Always a fresh reading: a scene asking "is it charging?" must not get the
+  // answer of the last poll, up to an hour old.
+  const snapshot = await withYotoErrors(
+    registry.pollOne(gladys, player, config),
+    'Scene action get_player_status failed',
+  );
+  return playerStatusOutputs(snapshot);
+});
+
+gladys.onSceneAction(SCENE_ACTION.REFRESH_PLAYERS, async () => {
+  const count = await withYotoErrors(refreshAllPlayers(), 'Scene action refresh_players failed');
+  return { count };
+});
+
+/** The player chosen in a `source: "devices"` select, or a readable error. */
+async function findPlayerOrThrow(externalId) {
+  const player = await withYotoErrors(
+    registry.resolvePlayer(gladys, externalId),
+    'Could not read the Yoto account',
+  );
+  if (!player) {
+    throw new Error('This Yoto player is no longer on the account.');
+  }
+  return player;
+}
+
+/** Report a Yoto failure in the connection badge, then let it fail the caller. */
+async function withYotoErrors(promise, context) {
+  try {
+    return await promise;
+  } catch (err) {
+    await handleYotoError(err, context);
+    throw err;
+  }
+}
 
 // --- Configuration updated by the user ---------------------------------------
 gladys.onConfigUpdated(async (newConfig) => {

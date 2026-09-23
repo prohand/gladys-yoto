@@ -6,13 +6,17 @@
 // Yoto app shows up on the next scan.
 //
 // The registry owns what has to survive between two polls: the known players,
-// the last published values (rate-limit friendly), the card-title cache and
-// the date of the last poll of each player (Gladys never ticks slower than a
-// minute: a longer interval is enforced here).
+// the last published values (rate-limit friendly), the card-title cache, the
+// date of the last poll of each player (Gladys never ticks slower than a
+// minute: a longer interval is enforced here) and the last snapshot of each
+// player — the dashboard widgets are drawn from it, and comparing two
+// snapshots is what fires the scene triggers.
 // -----------------------------------------------------------------------------
 
 import { createLogger } from '@gladysassistant/integration-sdk';
 import { gladysPollFrequency } from '../config.js';
+import { detectSceneEvents, nextBatteryLowLatch } from '../scenes.js';
+import { WIDGET } from '../widgets.js';
 import {
   buildPlayerDevice,
   playerExternalIds,
@@ -33,6 +37,8 @@ export class PlayerRegistry {
     this.cardTitles = new Map();
     /** @type {Map<string, number>} Gladys external_id -> date of the last poll */
     this.lastPollAt = new Map();
+    /** @type {Map<string, object>} Yoto deviceId -> last snapshot (see buildSnapshot) */
+    this.snapshots = new Map();
   }
 
   /** Re-read the player list from the Yoto account. */
@@ -81,12 +87,7 @@ export class PlayerRegistry {
       logger.warn(`No Yoto player matches ${device.external_id} (removed from the account?)`);
       return;
     }
-    this.lastPollAt.set(device.external_id, Date.now());
-    await pollPlayer(gladys, player, config, {
-      api: this.api,
-      cache: this.cache,
-      cardTitles: this.cardTitles,
-    });
+    await this.pollOne(gladys, player, config);
   }
 
   /**
@@ -111,14 +112,70 @@ export class PlayerRegistry {
   /** Poll every known player (manifest action "refresh_now"), interval or not. */
   async pollAll(gladys, config) {
     for (const player of this.players.values()) {
-      this.lastPollAt.set(playerExternalIds(gladys, player.deviceId).device, Date.now());
-      await pollPlayer(gladys, player, config, {
-        api: this.api,
-        cache: this.cache,
-        cardTitles: this.cardTitles,
-      });
+      await this.pollOne(gladys, player, config);
     }
     return this.players.size;
+  }
+
+  /**
+   * Read one player now, interval or not, and propagate the result: states
+   * to its device, scene events for what changed since the last reading,
+   * and a refresh nudge to the widgets when their content moved.
+   * @returns {Promise<object>} the new snapshot
+   */
+  async pollOne(gladys, player, config) {
+    const externalId = playerExternalIds(gladys, player.deviceId).device;
+    this.lastPollAt.set(externalId, Date.now());
+    const snapshot = await pollPlayer(gladys, player, config, {
+      api: this.api,
+      cache: this.cache,
+      cardTitles: this.cardTitles,
+    });
+
+    const previous = this.snapshots.get(player.deviceId);
+    snapshot.batteryLowLatched = nextBatteryLowLatch(previous, snapshot);
+    this.snapshots.set(player.deviceId, snapshot);
+
+    for (const event of detectSceneEvents(previous, snapshot, externalId)) {
+      // A scene event is a bonus on top of the states: a refused event
+      // (rate limit, core without scene support) must never fail the poll.
+      try {
+        await gladys.publishSceneEvent(event.key, event.data);
+        logger.info(`${player.name}: scene event ${event.key}`);
+      } catch (err) {
+        logger.warn(`${player.name}: scene event ${event.key} refused: ${err.message}`);
+      }
+    }
+
+    if (widgetContentChanged(previous, snapshot)) {
+      this.requestWidgetRefresh(gladys);
+    }
+    return snapshot;
+  }
+
+  /**
+   * The player behind a Gladys external_id — what a `source: "devices"`
+   * select of a widget or a scene action hands over. A player added since the
+   * last scan is found by re-reading the account once.
+   */
+  async resolvePlayer(gladys, externalId) {
+    const player = this.findPlayer(gladys, externalId);
+    if (player || !externalId) {
+      return player;
+    }
+    await this.refresh();
+    return this.findPlayer(gladys, externalId);
+  }
+
+  /** "Re-pull me now" to both widgets: fire-and-forget, rate-limited core-side. */
+  requestWidgetRefresh(gladys) {
+    for (const key of Object.values(WIDGET)) {
+      try {
+        gladys.requestWidgetRefresh(key);
+      } catch (err) {
+        logger.debug(`Widget refresh nudge for ${key} failed: ${err.message}`);
+      }
+    }
   }
 
   /** Values must be re-published after a reconnection: Gladys may have missed them. */
@@ -127,6 +184,26 @@ export class PlayerRegistry {
     // Same reason: the next tick must poll instead of waiting for the interval.
     this.lastPollAt.clear();
   }
+}
+
+/**
+ * True when what the widgets DRAW from the snapshot moved. The live tiles and
+ * the chart follow the device states on their own: only the text parts
+ * (playing, power, connection, battery badge) need a nudge.
+ */
+function widgetContentChanged(previous, current) {
+  if (!previous) {
+    return true;
+  }
+  return [
+    'online',
+    'batteryLevel',
+    'charging',
+    'playing',
+    'cardId',
+    'cardTitle',
+    'wifiStrength',
+  ].some((key) => previous[key] !== current[key]);
 }
 
 export { DEVICE_TYPE };

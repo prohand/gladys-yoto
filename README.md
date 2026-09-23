@@ -25,6 +25,25 @@ features:
 | Wi-Fi signal       | `signal` / `integer`        | dBm  | `wifiStrength`              |
 | Online             | `input` / `binary`          | –    | `device.online`             |
 
+On top of the devices (Gladys **5.1** or later):
+
+| Surface       | Key                 | What it does                                                       |
+| ------------- | ------------------- | ------------------------------------------------------------------ |
+| Widget        | `players`           | Every player in one card: card playing, battery badge, online      |
+| Widget        | `player`            | One player: live battery/volume/temperature, 24 h battery curve    |
+| Scene trigger | `card_started`      | A card (or stream) starts — filters: player, card title            |
+| Scene trigger | `card_stopped`      | The player stops playing — filter: player                          |
+| Scene trigger | `battery_low`       | Battery under 20 % on battery, once until charged — filter: player |
+| Scene action  | `get_player_status` | Read one player now, return its values as outputs                  |
+| Scene action  | `refresh_players`   | Read every player now, return the count                            |
+
+The widgets are drawn from the snapshot of the last poll (no Yoto call when a
+dashboard opens) and nudged with `requestWidgetRefresh` when a poll changes
+what they show; their tiles and chart are bound to the device features, so they
+follow the states live. The scene events come from comparing two snapshots of
+the same player: one event per transition, none on the first reading after a
+start, and a refused event never fails the poll.
+
 Everything is **read-only**: the public Yoto REST API reports the player
 telemetry but does not expose the playback commands (play, pause, volume set),
 which travel over the family MQTT channel. Features are therefore declared
@@ -93,7 +112,9 @@ src/yoto/auth.js       PKCE authorization code flow, token refresh, token storag
 src/yoto/api.js        Yoto REST client
 src/yoto/status.js     raw firmware status -> Gladys values (pure functions)
 src/devices/player.js  one Yoto player -> one Gladys device + polling
-src/devices/index.js   player registry (discovery, dispatch, caches)
+src/devices/index.js   player registry (discovery, dispatch, caches, snapshots)
+src/widgets.js         dashboard widget contents (pure functions)
+src/scenes.js          scene events between two snapshots, scene action outputs
 test/                  node:test suite, no framework to install
 ```
 
