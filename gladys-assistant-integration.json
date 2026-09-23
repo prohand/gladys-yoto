@@ -6,8 +6,8 @@
     "en": "Monitor your Yoto players: battery, charge, volume, playing card, ambient light and Wi-Fi signal.",
     "fr": "Supervisez vos lecteurs Yoto : batterie, charge, volume, carte en cours, luminosité et signal Wi-Fi."
   },
-  "version": "1.1.1",
-  "docker_image": "ghcr.io/prohand/gladys-yoto:1.1.1",
+  "version": "2.0.0",
+  "docker_image": "ghcr.io/prohand/gladys-yoto:2.0.0",
   "gladys_version": ">=5.1.0",
   "cover_image": "https://raw.githubusercontent.com/prohand/gladys-yoto/main/cover.png",
   "categories": [
