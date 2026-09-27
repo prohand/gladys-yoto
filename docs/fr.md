@@ -139,6 +139,12 @@ un canal privé de Yoto).
   mettez Gladys à jour pour que le flux navigateur soit utilisé.
 - **« Aucune connexion Yoto en cours »** — l'intégration a redémarré entre le
   clic sur **Connecter** et le retour de Yoto ; recliquez sur **Connecter**.
+- **Alerte « niveau de batterie inférieur à 10 % (actuel : 1 %) » alors que
+  le lecteur est chargé** — corrigé après la 2.0.0 : la feature « Charging » était
+  rangée dans la catégorie batterie, et le contrôle hebdomadaire de Gladys la
+  lisait comme un pourcentage (1 = branché). Après la mise à jour, ouvrez
+  l'onglet **Découverte** et mettez à jour le lecteur (ou supprimez-le puis
+  ajoutez-le de nouveau) pour que la feature change de catégorie.
 - **Valeurs figées ou manquantes** — un lecteur éteint ou hors ligne ne remonte
   plus rien : l'intégration publie alors le dernier état connu et le capteur
   « En ligne » passe à 0. Les capteurs absents d'un modèle (température sur un

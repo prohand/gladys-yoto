@@ -58,6 +58,21 @@ test('every feature is read-only and has a unique external id', () => {
   }
 });
 
+test('only the battery level sits in the battery category', () => {
+  // The weekly battery check of Gladys reads EVERY feature of the battery
+  // category as a percentage, whatever its type: a 0/1 "charging" feature
+  // there made a plugged player report "battery under 10 % (current: 1 %)".
+  const gladys = createFakeGladys();
+  const device = buildPlayerDevice(gladys, PLAYER, CONFIG);
+  const battery = device.features.filter(
+    (feature) => feature.category === DEVICE_FEATURE_CATEGORIES.BATTERY,
+  );
+  assert.deepEqual(
+    battery.map((feature) => feature.type),
+    [DEVICE_FEATURE_TYPES.BATTERY.INTEGER],
+  );
+});
+
 test('every feature uses a category, a type and a unit Gladys knows', () => {
   // Gladys refuses the whole discovery payload with "unknown category" (400)
   // when a single feature carries a constant that does not exist — a typo or

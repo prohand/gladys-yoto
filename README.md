@@ -16,7 +16,7 @@ features:
 | Feature            | Category                    | Unit | Source (`device.status`)    |
 | ------------------ | --------------------------- | ---- | --------------------------- |
 | Battery            | `battery` / `integer`       | %    | `batteryLevel`              |
-| Charging           | `battery` / `charging`      | –    | `powerSrc` > 0 / `charging` |
+| Charging           | `input` / `binary`          | –    | `powerSrc` > 0 / `charging` |
 | Volume             | `music` / `volume`          | %    | `userVolume` (or `volume`)  |
 | Playing            | `music` / `playback_state`  | –    | `cardInserted` > 0          |
 | Card playing       | `text` / `text`             | –    | `activeCard` (title)        |
