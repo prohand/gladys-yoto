@@ -113,6 +113,11 @@ Yoto channel).
 
 ## Troubleshooting
 
+- **"Battery below 10 % (current: 1 %)" alert while the player is charged** —
+  fixed after 2.0.0: the "Charging" feature sat in the battery category, and the
+  weekly Gladys check read it as a percentage (1 = plugged in). After the
+  update, open the **Discover** tab and update the player (or delete and add
+  it again) so the feature moves to its new category.
 - **"No Yoto account linked yet: click Connect"** — the Client ID is set but the
   account was never linked, or the link expired.
 - **"The Yoto link expired, please connect your account again"** — the token was

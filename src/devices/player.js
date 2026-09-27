@@ -77,8 +77,12 @@ export function buildPlayerDevice(gladys, player, config) {
       {
         name: 'Charging',
         external_id: ids.feature(FEATURE.CHARGING),
-        category: DEVICE_FEATURE_CATEGORIES.BATTERY,
-        type: DEVICE_FEATURE_TYPES.BATTERY.CHARGING,
+        // NOT the battery category: the weekly battery check of the core reads
+        // every feature of that category as a percentage, whatever its type,
+        // so a plugged player (1) raised "battery under 10 % (current: 1 %)".
+        // INPUT/binary is the generic read-only on/off state, as for Online.
+        category: DEVICE_FEATURE_CATEGORIES.INPUT,
+        type: DEVICE_FEATURE_TYPES.INPUT.BINARY,
         min: 0,
         max: 1,
         read_only: true,
