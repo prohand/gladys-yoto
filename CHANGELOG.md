@@ -16,6 +16,13 @@ All notable changes to this integration are documented here. The format follows
 
 - Development dependencies updated to their latest versions (ESLint 10.12, Prettier 3.9.9, globals 17.13).
 
+### Fixed
+
+- A player added in Gladys after a first read ("Refresh now", a widget, a scene) now gets all its values at once: it is read when Gladys creates it, with every value republished.
+- Stable values (Online, volume…) are republished once an hour, so Gladys no longer shows them as "no recent value".
+- A value whose publication failed is retried on the next poll instead of waiting for it to change.
+- The Release workflow re-runs Prettier on the manifest after `jq`, so a release no longer leaves `main` with a failing CI format check.
+
 ## [2.0.1] - 2026-09-27
 
 ### Fixed

@@ -178,6 +178,23 @@ gladys.onPoll(async (device) => {
   }
 });
 
+// --- The user added (or updated) a player in Gladys --------------------------
+// States sent before the device existed were dropped by the core: read the
+// player now, with every value republished.
+async function readNewDevice(device) {
+  registry.forgetDevice(device.external_id);
+  if (!tokenStore.linked) {
+    return;
+  }
+  try {
+    await registry.poll(gladys, device, config);
+  } catch (err) {
+    logger.warn(`First read of ${device.external_id} failed: ${err.message}`);
+  }
+}
+gladys.onDeviceCreated(readNewDevice);
+gladys.onDeviceUpdated(readNewDevice);
+
 // --- Manifest actions: buttons in the Configuration screen -------------------
 gladys.onAction('test_connection', async () => {
   const players = await registry.refresh();

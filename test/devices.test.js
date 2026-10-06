@@ -7,7 +7,13 @@ import {
 } from '@gladysassistant/integration-sdk';
 import { createFakeGladys, createFakeYotoApi } from './helpers/fakeGladys.js';
 import { PlayerRegistry } from '../src/devices/index.js';
-import { buildPlayerDevice, FEATURE, playerExternalIds } from '../src/devices/player.js';
+import {
+  buildPlayerDevice,
+  FEATURE,
+  playerExternalIds,
+  StateCache,
+  STATE_HEARTBEAT_MS,
+} from '../src/devices/player.js';
 import { normalizeConfig } from '../src/config.js';
 
 const CONFIG = normalizeConfig({ client_id: 'abc', poll_frequency: 180 });
@@ -299,4 +305,55 @@ test('polling a device removed from the Yoto account stays silent', async () => 
   const registry = new PlayerRegistry(createFakeYotoApi({ devices: [] }));
   await registry.poll(gladys, { external_id: 'ext:yoto:yoto-player:gone' }, CONFIG);
   assert.equal(gladys.published.length, 0);
+});
+
+function registryWithPlayer() {
+  return new PlayerRegistry(
+    createFakeYotoApi({
+      devices: [PLAYER],
+      statuses: STATUS,
+      cardTitles: { h2Fbz: 'Le Gruffalo' },
+    }),
+  );
+}
+
+test('a device created after a first read gets every value again', async () => {
+  const gladys = createFakeGladys();
+  const registry = registryWithPlayer();
+  await registry.refresh();
+  // "Refresh now" read the player before the user added its device: Gladys
+  // dropped those states.
+  await registry.pollAll(gladys, CONFIG);
+  const device = registry.buildDiscoveredDevices(gladys, CONFIG)[0];
+  const before = gladys.published.length;
+
+  registry.forgetDevice(device.external_id);
+  await registry.poll(gladys, device, CONFIG);
+
+  assert.ok(gladys.published.length - before >= 9, 'every feature published again');
+});
+
+test('an unchanged value is republished once the heartbeat elapsed', () => {
+  const cache = new StateCache();
+  assert.equal(cache.changed('f', 1, 0), true);
+  cache.remember('f', 1, 0);
+  assert.equal(cache.changed('f', 1, STATE_HEARTBEAT_MS - 1), false);
+  assert.equal(cache.changed('f', 1, STATE_HEARTBEAT_MS), true);
+  assert.equal(cache.changed('f', 2, 1), true);
+});
+
+test('a failed publication is retried on the next poll', async () => {
+  const gladys = createFakeGladys();
+  const registry = registryWithPlayer();
+  await registry.refresh();
+  const device = registry.buildDiscoveredDevices(gladys, CONFIG)[0];
+  const publishStates = gladys.publishStates;
+  gladys.publishStates = async () => {
+    throw new Error('Gladys unreachable');
+  };
+  await assert.rejects(() => registry.poll(gladys, device, CONFIG));
+  gladys.publishStates = publishStates;
+  registry.lastPollAt.clear();
+  await registry.poll(gladys, device, CONFIG);
+  assert.equal(stateOf(gladys, FEATURE.BATTERY), 87);
 });

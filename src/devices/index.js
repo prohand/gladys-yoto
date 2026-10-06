@@ -178,6 +178,16 @@ export class PlayerRegistry {
     }
   }
 
+  /**
+   * A device was just created (or updated) in Gladys: the states published
+   * before it existed were dropped by the core, so forget them and make its
+   * next poll due at once.
+   */
+  forgetDevice(externalId) {
+    this.cache.forgetDevice(externalId);
+    this.lastPollAt.delete(externalId);
+  }
+
   /** Values must be re-published after a reconnection: Gladys may have missed them. */
   clearCache() {
     this.cache.clear();
