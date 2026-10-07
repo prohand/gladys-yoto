@@ -40,8 +40,17 @@ let config = normalizeConfig();
 
 // Tokens live in the Gladys config (keys outside the config_schema: never
 // rendered in the UI), so nothing has to be written to disk.
+// A failed write must not fail the call that refreshed the token: the new
+// token is in memory and works. Rethrowing used to fail the poll that happened
+// to refresh it, for a token that was perfectly valid.
 const tokenStore = new TokenStore({
-  onTokensChanged: (tokens) => gladys.setConfig(tokens),
+  onTokensChanged: (tokens) =>
+    gladys.setConfig(tokens).catch((err) => {
+      logger.error(
+        'Could not save the Yoto tokens in Gladys: a restart may ask to link the account again',
+        err,
+      );
+    }),
 });
 
 const api = new YotoApi(tokenStore, () => config.client_id);
