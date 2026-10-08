@@ -194,6 +194,12 @@ export async function pollDeviceToken(clientId, deviceCode, options = {}) {
  *
  * `onTokensChanged` is how they survive a restart: the integration passes a
  * callback writing them into the Gladys config (`gladys.setConfig`).
+ *
+ * The copy in memory is the authoritative one. Yoto ROTATES the refresh token
+ * on every refresh, so a write to Gladys that fails leaves the stored copy
+ * holding a token Yoto already invalidated: the next restart would ask the user
+ * to link the account again. A failed write is therefore not fatal (the token
+ * in memory works) but remembered, and retried on the next use of the store.
  */
 export class TokenStore {
   constructor({ onTokensChanged } = {}) {
@@ -204,13 +210,38 @@ export class TokenStore {
     // Shared promise: concurrent polls of several players must trigger ONE
     // refresh, not one per device.
     this.refreshPromise = null;
+    // True while Gladys holds an older copy than the one in memory.
+    this.persistPending = false;
+    this.persistGeneration = 0;
+    this.persistPromise = null;
   }
 
-  /** Load the tokens read from the Gladys config at startup (no write back). */
+  /**
+   * Load the tokens read from the Gladys config (no write back).
+   *
+   * The config handed over on `connected` and on every Save of the
+   * Configuration screen carries the STORED copy, which can be older than the
+   * one in memory (a refresh whose write failed, or a write still in flight).
+   * Restoring it blindly would bring back a refresh token Yoto already rotated
+   * out. So the stored copy only wins when nothing newer is in memory: no
+   * pending write, and an expiry that is not older than ours. A new Client ID
+   * goes through clear(), which always empties the store.
+   */
   restore({ access_token: accessToken, refresh_token: refreshToken, expires_at: expiresAt } = {}) {
-    this.accessToken = accessToken ?? null;
-    this.refreshToken = refreshToken ?? null;
-    this.expiresAt = Number(expiresAt ?? 0);
+    const incoming = {
+      accessToken: accessToken || null,
+      refreshToken: refreshToken || null,
+      expiresAt: Number(expiresAt ?? 0) || 0,
+    };
+    if (this.persistPending) {
+      return;
+    }
+    if (this.refreshToken && incoming.expiresAt < this.expiresAt) {
+      return;
+    }
+    this.accessToken = incoming.accessToken;
+    this.refreshToken = incoming.refreshToken;
+    this.expiresAt = incoming.expiresAt;
   }
 
   /** Store a fresh token payload coming from Yoto, and persist it. */
@@ -219,13 +250,7 @@ export class TokenStore {
     // A refresh response may omit the refresh token: keep the current one.
     this.refreshToken = payload.refresh_token ?? this.refreshToken;
     this.expiresAt = Date.now() + Number(payload.expires_in ?? 3600) * 1000;
-    if (this.onTokensChanged) {
-      await this.onTokensChanged({
-        access_token: this.accessToken,
-        refresh_token: this.refreshToken,
-        expires_at: this.expiresAt,
-      });
-    }
+    await this.#persist();
   }
 
   /** Forget everything (invalid refresh token: the user must link again). */
@@ -233,17 +258,67 @@ export class TokenStore {
     this.accessToken = null;
     this.refreshToken = null;
     this.expiresAt = 0;
-    if (this.onTokensChanged) {
-      await this.onTokensChanged({ access_token: '', refresh_token: '', expires_at: 0 });
+    await this.#persist();
+  }
+
+  /** Retry a write to Gladys that failed earlier; a no-op when none is pending. */
+  async persistIfPending() {
+    if (this.persistPending) {
+      await this.#persist();
     }
+  }
+
+  /**
+   * Write the CURRENT tokens to Gladys. A write that fails is logged (without
+   * any token) and left pending; it never fails the caller, whose token in
+   * memory is valid.
+   */
+  #persist() {
+    if (!this.onTokensChanged) {
+      return Promise.resolve();
+    }
+    // Pending from now on, so a restore() landing before the write cannot
+    // bring the older stored copy back. Only the LAST write clears the flag.
+    this.persistPending = true;
+    const generation = ++this.persistGeneration;
+    // One write at a time: two in flight could land in the wrong order.
+    this.persistPromise = (this.persistPromise ?? Promise.resolve()).then(async () => {
+      try {
+        await this.onTokensChanged({
+          access_token: this.accessToken ?? '',
+          refresh_token: this.refreshToken ?? '',
+          expires_at: this.expiresAt,
+        });
+        if (generation === this.persistGeneration) {
+          this.persistPending = false;
+        }
+      } catch (err) {
+        logger.error(
+          `Could not save the Yoto tokens in Gladys, retrying on the next poll: ${err.message}`,
+        );
+      }
+    });
+    return this.persistPromise;
   }
 
   get linked() {
     return Boolean(this.refreshToken);
   }
 
+  /**
+   * The API refused `token` (HTTP 401) although it had not expired yet:
+   * Yoto revoked it early. Mark it expired so the next getAccessToken()
+   * refreshes it — unless a concurrent caller already replaced it.
+   */
+  invalidate(token) {
+    if (token && this.accessToken === token) {
+      this.expiresAt = 0;
+    }
+  }
+
   /** Return a usable access token, refreshing it when it is about to expire. */
   async getAccessToken(clientId) {
+    await this.persistIfPending();
     if (this.accessToken && Date.now() < this.expiresAt - EXPIRY_MARGIN_SECONDS * 1000) {
       return this.accessToken;
     }
