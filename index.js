@@ -25,6 +25,8 @@ import {
 } from './src/yoto/auth.js';
 import { YotoApi } from './src/yoto/api.js';
 import { PlayerRegistry } from './src/devices/index.js';
+import { ConnectionStatus } from './src/connectionStatus.js';
+import { createRetry } from './src/retry.js';
 import { SCENE_ACTION, playerStatusOutputs } from './src/scenes.js';
 import {
   WIDGET,
@@ -39,22 +41,23 @@ const gladys = new GladysIntegration();
 let config = normalizeConfig();
 
 // Tokens live in the Gladys config (keys outside the config_schema: never
-// rendered in the UI), so nothing has to be written to disk.
-// A failed write must not fail the call that refreshed the token: the new
-// token is in memory and works. Rethrowing used to fail the poll that happened
-// to refresh it, for a token that was perfectly valid.
+// rendered in the UI), so nothing has to be written to disk. A failed write
+// does not fail the call that refreshed the token (the new one is in memory
+// and works): the TokenStore logs it and retries it on the next poll.
 const tokenStore = new TokenStore({
-  onTokensChanged: (tokens) =>
-    gladys.setConfig(tokens).catch((err) => {
-      logger.error(
-        'Could not save the Yoto tokens in Gladys: a restart may ask to link the account again',
-        err,
-      );
-    }),
+  onTokensChanged: (tokens) => gladys.setConfig(tokens),
 });
 
 const api = new YotoApi(tokenStore, () => config.client_id);
-const registry = new PlayerRegistry(api);
+const registry = new PlayerRegistry(api, { isLinked: () => tokenStore.linked });
+const connectionStatus = new ConnectionStatus(gladys);
+
+// The start-up read of the account, retried after 1, 5 then every 15 minutes
+// while it fails (container started before the network): it is what fills
+// the Discovery tab.
+const accountInitialization = createRetry(initializeAccount, {
+  onError: (err) => logger.error(`Yoto account initialization failed: ${err.message}`),
+});
 
 // Guard for the linking flow: one pending link at a time, and it must stop
 // when the user reconnects or the container shuts down.
@@ -144,7 +147,7 @@ gladys.onOAuthCallback(async (key, { code, state, redirectUri }) => {
     });
     await tokenStore.update(tokens);
     logger.info('Yoto account linked');
-    await initializeAccount();
+    await accountInitialization.run();
   } catch (err) {
     logger.error(`Yoto token exchange failed: ${err.message}`);
     await reportDisconnected({
@@ -167,7 +170,7 @@ async function waitForApproval(flow, link) {
   }
   await tokenStore.update(tokens);
   logger.info('Yoto account linked');
-  await initializeAccount();
+  await accountInitialization.run();
 }
 
 // --- Discovery: Gladys asks for the list of devices --------------------------
@@ -175,12 +178,20 @@ gladys.onScanRequest(async () => {
   logger.info('onScanRequest -> reading the players of the Yoto account');
   await registry.refresh();
   await gladys.publishDiscoveredDevices(registry.buildDiscoveredDevices(gladys, config));
+  await connectionStatus.connected();
 });
 
 // --- Polling: Gladys asks to refresh a device --------------------------------
 gladys.onPoll(async (device) => {
   try {
-    await registry.poll(gladys, device, config);
+    // A token write that failed earlier is retried here, even while no
+    // account is linked (a cleared link must reach Gladys too).
+    await tokenStore.persistIfPending();
+    const snapshot = await registry.poll(gladys, device, config);
+    if (snapshot) {
+      // Yoto answered: a badge left red by an earlier failure turns green.
+      await connectionStatus.connected();
+    }
   } catch (err) {
     await handleYotoError(err, `Polling ${device.external_id} failed`);
     throw err; // the SDK acks the poll as failed, the error shows in Gladys
@@ -196,7 +207,9 @@ async function readNewDevice(device) {
     return;
   }
   try {
-    await registry.poll(gladys, device, config);
+    if (await registry.poll(gladys, device, config)) {
+      await connectionStatus.connected();
+    }
   } catch (err) {
     logger.warn(`First read of ${device.external_id} failed: ${err.message}`);
   }
@@ -207,7 +220,7 @@ gladys.onDeviceUpdated(readNewDevice);
 // --- Manifest actions: buttons in the Configuration screen -------------------
 gladys.onAction('test_connection', async () => {
   const players = await registry.refresh();
-  await gladys.setConnectionStatus(true);
+  await connectionStatus.connected();
   if (players.length === 0) {
     return {
       en: 'Connected to Yoto, but this account has no player.',
@@ -255,7 +268,7 @@ gladys.onWidgetGet(WIDGET.PLAYER, async ({ settings }) => {
 
 gladys.onWidgetAction(WIDGET.PLAYERS, async (actionKey) => {
   assertWidgetAction(actionKey);
-  const count = await withYotoErrors(refreshAllPlayers(), 'Widget refresh failed');
+  const count = await readYoto(refreshAllPlayers(), 'Widget refresh failed');
   return {
     en: `${count} player(s) refreshed.`,
     fr: `${count} lecteur(s) rafraîchi(s).`,
@@ -265,7 +278,7 @@ gladys.onWidgetAction(WIDGET.PLAYERS, async (actionKey) => {
 gladys.onWidgetAction(WIDGET.PLAYER, async (actionKey, params, { settings }) => {
   assertWidgetAction(actionKey);
   const player = await findPlayerOrThrow(settings.player);
-  await withYotoErrors(registry.pollOne(gladys, player, config), 'Widget refresh failed');
+  await readYoto(registry.pollOne(gladys, player, config), 'Widget refresh failed');
   return { en: `${player.name} refreshed.`, fr: `${player.name} rafraîchi.` };
 });
 
@@ -282,7 +295,7 @@ gladys.onSceneAction(SCENE_ACTION.GET_PLAYER_STATUS, async (fields) => {
   const player = await findPlayerOrThrow(fields.player);
   // Always a fresh reading: a scene asking "is it charging?" must not get the
   // answer of the last poll, up to an hour old.
-  const snapshot = await withYotoErrors(
+  const snapshot = await readYoto(
     registry.pollOne(gladys, player, config),
     'Scene action get_player_status failed',
   );
@@ -290,7 +303,7 @@ gladys.onSceneAction(SCENE_ACTION.GET_PLAYER_STATUS, async (fields) => {
 });
 
 gladys.onSceneAction(SCENE_ACTION.REFRESH_PLAYERS, async () => {
-  const count = await withYotoErrors(refreshAllPlayers(), 'Scene action refresh_players failed');
+  const count = await readYoto(refreshAllPlayers(), 'Scene action refresh_players failed');
   return { count };
 });
 
@@ -316,6 +329,17 @@ async function withYotoErrors(promise, context) {
   }
 }
 
+/**
+ * Same, for a call that really READ the Yoto cloud: its success turns the badge
+ * green again. (Resolving a player can be answered from memory, which proves
+ * nothing about Yoto: it goes through withYotoErrors only.)
+ */
+async function readYoto(promise, context) {
+  const result = await withYotoErrors(promise, context);
+  await connectionStatus.connected();
+  return result;
+}
+
 // --- Configuration updated by the user ---------------------------------------
 gladys.onConfigUpdated(async (newConfig) => {
   logger.info('onConfigUpdated -> new configuration received');
@@ -328,6 +352,7 @@ gladys.onConfigUpdated(async (newConfig) => {
   if (previous.client_id && previous.client_id !== config.client_id) {
     logger.info('Client ID changed -> the Yoto account must be linked again');
     pendingLink?.cancel();
+    accountInitialization.cancel();
     await tokenStore.clear();
     await reportDisconnected({
       en: 'Client ID changed, please connect your Yoto account again.',
@@ -348,14 +373,17 @@ gladys.onConfigUpdated(async (newConfig) => {
 // The SDK logs the WebSocket lifecycle itself (under `gladys-sdk`): these
 // handlers only run the integration's own (re)initialization.
 gladys.on('connected', async () => {
+  // A new connection: the badge Gladys shows may no longer be the last one we sent.
+  connectionStatus.reset();
   try {
     const raw = await gladys.getConfig();
     config = normalizeConfig(raw);
     tokenStore.restore(raw);
+    await tokenStore.persistIfPending();
     // Gladys may have missed states published while we were disconnected:
     // start from a clean cache so the next poll republishes everything.
     registry.clearCache();
-    await initializeAccount();
+    await accountInitialization.run();
   } catch (err) {
     logger.error('Post-connection initialization failed', err);
     await handleYotoError(err, 'Initialization failed');
@@ -364,11 +392,15 @@ gladys.on('connected', async () => {
 
 gladys.on('disconnected', () => {
   logger.warn('Disconnected from Gladys, polling is suspended until reconnection');
+  // Nothing could be published meanwhile; the reconnection starts a new read.
+  accountInitialization.cancel();
 });
 
 /**
- * Read the Yoto account and publish its players. Called after a connection to
- * Gladys and right after a successful pairing.
+ * Read the Yoto account and publish its players. Called (through
+ * accountInitialization, which retries it) after a connection to Gladys and
+ * right after a successful pairing.
+ * @returns {Promise<boolean>} false when it failed and is worth retrying
  */
 async function initializeAccount() {
   if (!config.client_id) {
@@ -376,14 +408,14 @@ async function initializeAccount() {
       en: 'Fill in your Yoto Client ID, then connect your account.',
       fr: 'Renseignez votre Client ID Yoto, puis connectez votre compte.',
     });
-    return;
+    return true;
   }
   if (!tokenStore.linked) {
     await reportDisconnected({
       en: 'No Yoto account linked yet: click Connect.',
       fr: 'Aucun compte Yoto lié : cliquez sur Connecter.',
     });
-    return;
+    return true;
   }
 
   try {
@@ -391,10 +423,17 @@ async function initializeAccount() {
     await gladys.publishDiscoveredDevices(registry.buildDiscoveredDevices(gladys, config));
     // Application-level status, shown in the Configuration screen: an
     // integration can be RUNNING and still disconnected from its cloud.
-    await gladys.setConnectionStatus(true);
+    await connectionStatus.connected();
+    return true;
   } catch (err) {
-    logger.error('Could not read the Yoto account', err);
     await handleYotoError(err, 'Could not read the Yoto account');
+    // A dead link needs the user, not another try; anything else (network
+    // not up yet, Yoto down) is retried with a backoff.
+    const retry = !(err instanceof YotoAuthError && err.needsRelink);
+    if (retry) {
+      logger.info('The Yoto account will be read again later');
+    }
+    return !retry;
   }
 }
 
@@ -418,7 +457,7 @@ async function handleYotoError(err, context) {
 }
 
 function reportDisconnected(message) {
-  return gladys.setConnectionStatus(false, message).catch(() => {});
+  return connectionStatus.disconnected(message);
 }
 
 // --- Graceful shutdown -------------------------------------------------------
@@ -427,6 +466,16 @@ function reportDisconnected(message) {
 gladys.handleShutdown((signal) => {
   logger.info(`Received ${signal} -> graceful shutdown`);
   pendingLink?.cancel();
+  accountInitialization.cancel();
+});
+
+// A promise rejected with no handler (a fire-and-forget nudge, a callback of
+// the SDK) would otherwise crash the whole container on Node's default
+// policy, taking every player down for one failed call. Log it and carry on;
+// errors that leave the process in an unknown state (uncaughtException) still
+// crash it, which is what the supervisor's restart is for.
+process.on('unhandledRejection', (reason) => {
+  logger.error('Unhandled promise rejection', reason);
 });
 
 // --- Startup -----------------------------------------------------------------

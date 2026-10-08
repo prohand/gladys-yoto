@@ -56,7 +56,8 @@ Réglages disponibles :
   changement est pris en compte immédiatement, sans recréer les appareils.
 - **Demander au lecteur de se rafraîchir avant lecture** — envoie une demande
   de statut au lecteur avant chaque interrogation, pour lire des valeurs
-  fraîches plutôt que les dernières remontées. Décochez si votre application
+  fraîches plutôt que les dernières remontées (l'intégration attend une
+  seconde la réponse du lecteur avant de lire). Décochez si votre application
   Yoto n'a pas le scope `family:devices:control`.
 
 Les jetons d'accès sont conservés par Gladys en interne (jamais affichés dans
@@ -129,7 +130,15 @@ un canal privé de Yoto).
   renseigné mais la liaison n'a pas encore été faite, ou elle a expiré.
 - **« La liaison Yoto a expiré, reconnectez votre compte »** — le jeton a été
   révoqué (mot de passe changé, application supprimée côté Yoto). Cliquez de
-  nouveau sur **Connecter**.
+  nouveau sur **Connecter**. Un jeton d'accès refusé avant son expiration est
+  d'abord renouvelé une fois automatiquement : ce message n'apparaît que si
+  Yoto refuse aussi ce renouvellement.
+- **« Service Yoto injoignable, consultez les logs de l’intégration »** — une
+  lecture a échoué (Yoto indisponible, réseau coupé). Rien à faire : le badge
+  repasse au vert à la lecture réussie suivante. Si le conteneur démarre avant
+  que le réseau soit prêt, le compte Yoto est relu après 1 minute, 5 minutes,
+  puis toutes les 15 minutes, jusqu'à ce que les lecteurs apparaissent dans
+  l'onglet **Découverte**.
 - **Yoto répond « Callback URL mismatch »** — l'URL affichée par Yoto est celle
   de rappel Gladys : ajoutez-la dans les **Allowed callback URLs** de votre
   application Yoto, puis recliquez sur **Connecter**.

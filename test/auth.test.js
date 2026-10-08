@@ -274,3 +274,70 @@ test('TokenStore refuses to work without a linked account', async () => {
     (err) => err instanceof YotoAuthError && err.needsRelink,
   );
 });
+
+test('a token write Gladys refused is retried on the next use', async () => {
+  // Yoto rotates the refresh token: a failed write left Gladys holding a dead
+  // one, and nothing ever wrote the new one, so the next restart asked for a
+  // new link.
+  const saved = [];
+  let failWrites = true;
+  const store = new TokenStore({
+    onTokensChanged: async (tokens) => {
+      if (failWrites) {
+        throw new Error('Gladys restarting');
+      }
+      saved.push(tokens);
+    },
+  });
+  await store.update({ access_token: 'at-2', refresh_token: 'rt-2', expires_in: 3600 });
+  assert.equal(store.persistPending, true);
+  assert.equal(await store.getAccessToken('client-1'), 'at-2', 'the token in memory works');
+
+  failWrites = false;
+  await store.getAccessToken('client-1');
+  assert.equal(store.persistPending, false);
+  assert.equal(saved.length, 1);
+  assert.equal(saved[0].refresh_token, 'rt-2');
+});
+
+test('restore() does not bring back a stored copy older than the one in memory', async () => {
+  const store = new TokenStore({
+    onTokensChanged: async () => {
+      throw new Error('Gladys restarting');
+    },
+  });
+  const stale = { access_token: 'at-1', refresh_token: 'rt-1', expires_at: Date.now() + 1000 };
+  store.restore(stale);
+  await store.update({ access_token: 'at-2', refresh_token: 'rt-2', expires_in: 3600 });
+
+  // A Save of the Configuration screen hands back the stored (older) tokens.
+  store.restore(stale);
+  assert.equal(store.refreshToken, 'rt-2', 'a write still pending: memory is newer');
+
+  store.persistPending = false; // even once written, an older expiry loses
+  store.restore(stale);
+  assert.equal(store.refreshToken, 'rt-2');
+  store.restore({ access_token: '', refresh_token: '', expires_at: 0 });
+  assert.equal(store.linked, true);
+});
+
+test('restore() loads the stored tokens when memory holds nothing newer', () => {
+  const store = new TokenStore();
+  store.restore({ access_token: 'at-1', refresh_token: 'rt-1', expires_at: 5000 });
+  assert.equal(store.refreshToken, 'rt-1');
+  store.restore({ access_token: 'at-9', refresh_token: 'rt-9', expires_at: 9000 });
+  assert.equal(store.refreshToken, 'rt-9');
+});
+
+test('a new Client ID empties the tokens whatever restore() kept', async () => {
+  const saved = [];
+  const store = new TokenStore({ onTokensChanged: async (tokens) => saved.push(tokens) });
+  await store.update({ access_token: 'at-2', refresh_token: 'rt-2', expires_in: 3600 });
+  store.restore({ access_token: 'at-1', refresh_token: 'rt-1', expires_at: 0 });
+  await store.clear();
+  assert.equal(store.linked, false);
+  assert.equal(saved.at(-1).refresh_token, '');
+  // A later Save carrying the emptied copy keeps the store empty.
+  store.restore(saved.at(-1));
+  assert.equal(store.linked, false);
+});

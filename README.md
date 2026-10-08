@@ -81,7 +81,8 @@ is enforced by the registry, which skips the ticks landing too early. One poll
 does:
 
 1. `POST /device-v2/{deviceId}/command/status` — ask the player to report its
-   status now (optional, `request_status_push`);
+   status now (optional, `request_status_push`), then wait one second for the
+   report to reach the cloud;
 2. `GET /device-v2/{deviceId}/config` — read the `device.status` shadow;
 3. publish only the values that **changed** (the host API rate-limits states at
    300/minute).
