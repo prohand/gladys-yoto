@@ -193,12 +193,14 @@ export function buildPlayerDevice(gladys, player, config) {
  * @param {object} deps
  *   - api       : YotoApi
  *   - cache     : StateCache, so unchanged values are not re-published
- *   - cardTitles: Map<cardId, title>, so a card title is fetched once
+ *   - cardTitles: Map<cardId, { title, retryAt? }>, so a card title is
+ *                 fetched once (a failed fetch is retried later)
+ *   - now       : clock, injectable for the tests
  * @returns {Promise<object>} the snapshot of the player (see buildSnapshot),
  *   which the dashboard widgets, the scene triggers and the scene actions
  *   read instead of calling Yoto again
  */
-export async function pollPlayer(gladys, player, config, { api, cache, cardTitles }) {
+export async function pollPlayer(gladys, player, config, { api, cache, cardTitles, now }) {
   const ids = playerExternalIds(gladys, player.deviceId);
 
   if (config.request_status_push) {
@@ -236,7 +238,7 @@ export async function pollPlayer(gladys, player, config, { api, cache, cardTitle
     }
   }
 
-  const cardTitle = await resolveCardTitle(status.activeCard, { api, cardTitles });
+  const cardTitle = await resolveCardTitle(status.activeCard, { api, cardTitles, now });
   // The text feature shows a dash rather than an empty string: Gladys would
   // otherwise keep displaying the previous title.
   const text = cardTitle ?? '-';
@@ -274,25 +276,31 @@ export function buildSnapshot(player, online, status, cardTitle) {
   };
 }
 
+// A card title that could not be fetched (Yoto down, a 5xx, a scope added
+// since) is asked again after this delay — remembered as missing for good, the
+// card would show its raw id until the container restarts.
+export const CARD_TITLE_RETRY_MS = 10 * 60 * 1000;
+
 /**
  * The title of the card being played — the id alone ("h2Fbz") means nothing
- * to a user. The title never changes for a given card, so it is fetched once
- * and memoized; without the library scope we degrade to the id rather than
- * losing the information.
+ * to a user. The title never changes for a given card, so a title Yoto gave is
+ * memoized for good; a failure is only remembered for CARD_TITLE_RETRY_MS, and
+ * meanwhile we degrade to the id rather than losing the information.
  */
-async function resolveCardTitle(cardId, { api, cardTitles }) {
+async function resolveCardTitle(cardId, { api, cardTitles, now = Date.now }) {
   if (!cardId) {
     return null;
   }
-  if (!cardTitles.has(cardId)) {
+  const known = cardTitles.get(cardId);
+  if (!known || (known.retryAt !== undefined && now() >= known.retryAt)) {
     try {
-      cardTitles.set(cardId, await api.getCardTitle(cardId));
+      cardTitles.set(cardId, { title: await api.getCardTitle(cardId) });
     } catch (err) {
       logger.debug(`Card title unavailable for ${cardId}: ${err.message}`);
-      cardTitles.set(cardId, null);
+      cardTitles.set(cardId, { title: null, retryAt: now() + CARD_TITLE_RETRY_MS });
     }
   }
-  return cardTitles.get(cardId) ?? cardId;
+  return cardTitles.get(cardId).title ?? cardId;
 }
 
 function booleanToState(value) {

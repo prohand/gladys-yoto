@@ -6,9 +6,33 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- The connection badge turns green again at the next successful read after a transient error, instead of staying red until "Test the connection".
+- A container started before the network was up never published the players to the Discovery tab: the Yoto account is now read again after 1, 5, then every 15 minutes until it succeeds.
+- An access token Yoto refuses before its expiry (HTTP 401) is refreshed and the call replayed once; a new link is only asked for when Yoto refuses the refresh too.
+- A refreshed token that could not be saved in Gladys is saved again on the next poll, and saving the Configuration screen no longer brings back an older token than the one in use (Yoto rotates the refresh token: the old one asked for a new link after a restart). A new Client ID still empties the tokens.
+- A player removed from the Yoto account but still in Gladys no longer re-reads the whole account every minute (once per configured interval), and no Yoto call is attempted while no account is linked (it logged an error every minute per device).
+- The status request sent to a player before a read now waits one second for its answer to reach the cloud; read at once, it was a wasted call.
+- A card title Yoto failed to return is asked again after 10 minutes instead of showing the card id until the next restart.
+- An unhandled promise rejection is logged instead of crashing the container.
+
+### Changed
+
+- Node.js 22 or later is required (`engines`); CI tests on Node 22 and 24 and builds the Docker image on pull requests.
+- The Docker image fails its build when `npm ci` fails (no more `npm install` fallback) and drops the npm cache.
+- Dependabot also proposes updates of the Docker base image.
+
 ## [2.2.0] - 2026-10-07
 
-- Maintenance release, no functional change.
+### Fixed
+
+- A poll no longer fails when saving a refreshed Yoto token in Gladys fails: the new token is in memory and valid.
+
+### Changed
+
+- CI runs the store admission checks on pull requests; Dependabot proposes npm and GitHub Actions updates.
+- Every release publishes a GitHub Release.
 
 ## [2.1.0] - 2026-10-06
 

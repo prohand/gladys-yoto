@@ -13,6 +13,7 @@ import {
   playerExternalIds,
   StateCache,
   STATE_HEARTBEAT_MS,
+  CARD_TITLE_RETRY_MS,
 } from '../src/devices/player.js';
 import { normalizeConfig } from '../src/config.js';
 
@@ -305,6 +306,67 @@ test('polling a device removed from the Yoto account stays silent', async () => 
   const registry = new PlayerRegistry(createFakeYotoApi({ devices: [] }));
   await registry.poll(gladys, { external_id: 'ext:yoto:yoto-player:gone' }, CONFIG);
   assert.equal(gladys.published.length, 0);
+});
+
+test('a player removed from the account re-reads the account once per interval, not per tick', async () => {
+  // Only a successful lookup used to record the poll: a device still in Gladys
+  // whose player left the account listed the whole account every minute.
+  const gladys = createFakeGladys();
+  const api = createFakeYotoApi({ devices: [] });
+  let clock = 1_000_000;
+  const registry = new PlayerRegistry(api, { now: () => clock });
+  const device = { external_id: 'ext:yoto:yoto-player:gone' };
+
+  await registry.poll(gladys, device, CONFIG);
+  clock += 60_000;
+  await registry.poll(gladys, device, CONFIG);
+  clock += 60_000;
+  await registry.poll(gladys, device, CONFIG);
+  assert.equal(api.calls.filter((call) => call.method === 'listDevices').length, 1);
+
+  clock += 60_000; // 180 s: the configured interval elapsed
+  await registry.poll(gladys, device, CONFIG);
+  assert.equal(api.calls.filter((call) => call.method === 'listDevices').length, 2);
+});
+
+test('no Yoto call is made while no account is linked', async () => {
+  // Every tick used to fail with "No Yoto account linked yet", logged as an
+  // error once a minute per device.
+  const gladys = createFakeGladys();
+  const api = createFakeYotoApi({ devices: [PLAYER], statuses: STATUS });
+  const registry = new PlayerRegistry(api, { isLinked: () => false });
+  const device = { external_id: playerExternalIds(gladys, PLAYER.deviceId).device };
+
+  assert.equal(await registry.poll(gladys, device, CONFIG), null);
+  assert.equal(api.calls.length, 0);
+  assert.equal(gladys.published.length, 0);
+});
+
+test('a card title Yoto failed to give is asked again after a while, not forever', async () => {
+  const gladys = createFakeGladys();
+  const cardTitles = {};
+  const api = createFakeYotoApi({ devices: [PLAYER], statuses: STATUS, cardTitles });
+  let clock = 1_000_000;
+  const registry = new PlayerRegistry(api, { now: () => clock });
+  await registry.refresh();
+  const titleCalls = () => api.calls.filter((call) => call.method === 'getCardTitle').length;
+
+  await registry.pollAll(gladys, CONFIG);
+  assert.deepEqual(stateOf(gladys, FEATURE.CARD), { text: 'h2Fbz' });
+
+  cardTitles.h2Fbz = 'Le Gruffalo'; // Yoto answers again
+  clock += CARD_TITLE_RETRY_MS - 1;
+  await registry.pollAll(gladys, CONFIG);
+  assert.equal(titleCalls(), 1, 'a failure is not retried on every poll');
+
+  clock += 1;
+  await registry.pollAll(gladys, CONFIG);
+  assert.equal(titleCalls(), 2);
+  assert.deepEqual(stateOf(gladys, FEATURE.CARD), { text: 'Le Gruffalo' });
+
+  clock += CARD_TITLE_RETRY_MS;
+  await registry.pollAll(gladys, CONFIG);
+  assert.equal(titleCalls(), 2, 'a title Yoto gave is kept for good');
 });
 
 function registryWithPlayer() {

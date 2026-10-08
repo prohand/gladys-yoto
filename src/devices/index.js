@@ -28,9 +28,16 @@ import {
 const logger = createLogger({ name: 'registry' });
 
 export class PlayerRegistry {
-  /** @param {import('../yoto/api.js').YotoApi} api */
-  constructor(api) {
+  /**
+   * @param {import('../yoto/api.js').YotoApi} api
+   * @param {object} [options]
+   *   - isLinked: () => boolean, false while no Yoto account is linked
+   *   - now     : clock, injectable for the tests
+   */
+  constructor(api, { isLinked = () => true, now = Date.now } = {}) {
     this.api = api;
+    this.isLinked = isLinked;
+    this.now = now;
     /** @type {Map<string, object>} Yoto deviceId -> player */
     this.players = new Map();
     this.cache = new StateCache();
@@ -72,12 +79,23 @@ export class PlayerRegistry {
    * Poll one device asked by the Gladys scheduler. A device created before a
    * restart can be polled before any scan happened: refresh the list once
    * before giving up.
+   * @returns {Promise<object|null>} the new snapshot, or null when nothing was read
    */
   async poll(gladys, device, config) {
+    // Without a linked account every call would fail the same way, once a
+    // minute per device: the Configuration screen already says to connect.
+    if (!this.isLinked()) {
+      logger.debug(`${device.external_id}: no Yoto account linked, poll skipped`);
+      return null;
+    }
     if (!this.isDue(device.external_id, config)) {
       logger.debug(`${device.external_id}: too early, the configured interval is not elapsed yet`);
-      return;
+      return null;
     }
+    // Claimed BEFORE the lookup: a player removed from the Yoto account but
+    // still in Gladys would otherwise re-read the whole account on every tick,
+    // since only a successful lookup reaches pollOne().
+    this.lastPollAt.set(device.external_id, this.now());
     let player = this.findPlayer(gladys, device.external_id);
     if (!player) {
       await this.refresh();
@@ -85,9 +103,9 @@ export class PlayerRegistry {
     }
     if (!player) {
       logger.warn(`No Yoto player matches ${device.external_id} (removed from the account?)`);
-      return;
+      return null;
     }
-    await this.pollOne(gladys, player, config);
+    return this.pollOne(gladys, player, config);
   }
 
   /**
@@ -99,7 +117,7 @@ export class PlayerRegistry {
    * milliseconds late must not push a 120 s interval to the next 60 s tick,
    * which would turn it into 180 s.
    */
-  isDue(externalId, config, now = Date.now()) {
+  isDue(externalId, config, now = this.now()) {
     const last = this.lastPollAt.get(externalId);
     if (last === undefined) {
       return true;
@@ -125,11 +143,12 @@ export class PlayerRegistry {
    */
   async pollOne(gladys, player, config) {
     const externalId = playerExternalIds(gladys, player.deviceId).device;
-    this.lastPollAt.set(externalId, Date.now());
+    this.lastPollAt.set(externalId, this.now());
     const snapshot = await pollPlayer(gladys, player, config, {
       api: this.api,
       cache: this.cache,
       cardTitles: this.cardTitles,
+      now: this.now,
     });
 
     const previous = this.snapshots.get(player.deviceId);
