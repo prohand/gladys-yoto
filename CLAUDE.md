@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A Gladys Assistant **external integration** (Node 20+, ESM, no build step, one runtime
+A Gladys Assistant **external integration** (Node 22+, ESM, no build step, one runtime
 dependency: `@gladysassistant/integration-sdk`) that brings [Yoto](https://yotoplay.com) players
 into Gladys: one read-only device per player (battery, charging, volume, playing, card playing,
 ambient light, device temperature, Wi-Fi signal, online). Gladys 5.1+ adds two widgets, three
@@ -37,6 +37,8 @@ src/yoto/api.js        Yoto REST client (devices, device config, card titles, st
 src/yoto/status.js     parse the raw device status into plain values
 src/devices/index.js   PlayerRegistry: players, snapshots, poll schedule, scene triggers
 src/devices/player.js  device payload, pollPlayer(), StateCache (skip unchanged values)
+src/connectionStatus.js connection badge: remembers the last state, sends only changes
+src/retry.js           start-up account read retried with backoff (1, 5, then 15 min)
 src/scenes.js          scene trigger/action keys and outputs
 src/widgets.js         widgets `players` and `player`
 ```
