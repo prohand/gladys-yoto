@@ -36,7 +36,7 @@ src/yoto/auth.js       PKCE browser flow, deprecated device-code fallback, Token
 src/yoto/api.js        Yoto REST client (devices, device config, card titles, status push)
 src/yoto/status.js     parse the raw device status into plain values
 src/devices/index.js   PlayerRegistry: players, snapshots, poll schedule, scene triggers
-src/devices/player.js  device payload, pollPlayer(), StateCache (skip unchanged values)
+src/devices/player.js  device payload, pollPlayer() (publishChangedStates: skip unchanged values)
 src/connectionStatus.js connection badge: remembers the last state, sends only changes
 src/retry.js           start-up account read retried with backoff (1, 5, then 15 min)
 src/scenes.js          scene trigger/action keys and outputs
@@ -56,10 +56,11 @@ src/widgets.js         widgets `players` and `player`
 - **Polling**: devices carry `should_poll: true` and the slowest Gladys tick not above the
   configured interval (`gladysPollFrequency`; Gladys only accepts 1 s to 60 s, any other value
   rejects the whole discovery). The registry skips polls inside the configured interval.
-- **Unchanged values are not re-published** (`StateCache`) — except once an hour
+- **Unchanged values are not re-published** (SDK `publishChangedStates`) — except once an hour
   (`STATE_HEARTBEAT_MS`), so Gladys never shows a stable value as stale. A value is recorded only
-  after Gladys accepted it. The cache is cleared on every `connected`, and per device on
-  `onDeviceCreated` / `onDeviceUpdated` (states sent before the device existed were dropped).
+  after Gladys accepted it. The memory is cleared on every `connected`
+  (`gladys.forgetPublishedStates()`), and per device by the SDK itself on device created /
+  updated (states sent before the device existed were dropped).
 - **Widgets read the snapshots of the last polls**: opening a dashboard costs no Yoto call. Scene
   action `get_player_status` always reads fresh.
 - **Scene triggers fire on transitions** seen by a poll (card started/stopped, battery low once

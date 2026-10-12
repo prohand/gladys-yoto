@@ -192,7 +192,6 @@ export function buildPlayerDevice(gladys, player, config) {
  *
  * @param {object} deps
  *   - api       : YotoApi
- *   - cache     : StateCache, so unchanged values are not re-published
  *   - cardTitles: Map<cardId, { title, retryAt? }>, so a card title is
  *                 fetched once (a failed fetch is retried later)
  *   - now       : clock, injectable for the tests
@@ -200,7 +199,7 @@ export function buildPlayerDevice(gladys, player, config) {
  *   which the dashboard widgets, the scene triggers and the scene actions
  *   read instead of calling Yoto again
  */
-export async function pollPlayer(gladys, player, config, { api, cache, cardTitles, now }) {
+export async function pollPlayer(gladys, player, config, { api, cardTitles, now }) {
   const ids = playerExternalIds(gladys, player.deviceId);
 
   if (config.request_status_push) {
@@ -228,25 +227,17 @@ export async function pollPlayer(gladys, player, config, { api, cache, cardTitle
     [FEATURE.WIFI, status.wifiStrength],
   ]
     .filter(([, value]) => value !== null)
-    .map(([key, value]) => ({ device_feature_external_id: ids.feature(key), state: value }))
-    .filter(({ device_feature_external_id: id, state }) => cache.changed(id, state));
-
-  if (numericStates.length > 0) {
-    await gladys.publishStates(numericStates);
-    for (const { device_feature_external_id: id, state } of numericStates) {
-      cache.remember(id, state);
-    }
-  }
+    .map(([key, value]) => ({ device_feature_external_id: ids.feature(key), state: value }));
+  // The SDK remembers a value only once Gladys accepted it: a failed
+  // publication throws and is sent again by the next poll.
+  await gladys.publishChangedStates(numericStates, { heartbeat: STATE_HEARTBEAT_MS });
 
   const cardTitle = await resolveCardTitle(status.activeCard, { api, cardTitles, now });
   // The text feature shows a dash rather than an empty string: Gladys would
   // otherwise keep displaying the previous title.
   const text = cardTitle ?? '-';
-  const featureId = ids.feature(FEATURE.CARD);
-  if (cache.changed(featureId, text)) {
-    await gladys.publishState(featureId, { text });
-    cache.remember(featureId, text);
-  }
+  const cardState = { device_feature_external_id: ids.feature(FEATURE.CARD), text };
+  await gladys.publishChangedStates([cardState], { heartbeat: STATE_HEARTBEAT_MS });
 
   return buildSnapshot(player, online, status, cardTitle);
 }
@@ -307,52 +298,9 @@ function booleanToState(value) {
   return value === null ? null : Number(value);
 }
 
-/**
- * Remembers the last published value of each feature: polling a fleet of
- * players every minute would otherwise burn the 300 states/minute budget of
- * the host API with values that did not move.
- */
-// An unchanged value is still republished once an hour, so Gladys never
-// shows a stable feature as stale.
+// Polling a fleet of players every minute would burn the 300 states/minute
+// budget of the host API with values that did not move:
+// `gladys.publishChangedStates()` only sends what changed since the last value
+// Gladys accepted. An unchanged value is still republished once an hour, so
+// Gladys never shows a stable feature ("Online", the volume) as stale.
 export const STATE_HEARTBEAT_MS = 60 * 60 * 1000;
-
-export class StateCache {
-  constructor({ heartbeatMs = STATE_HEARTBEAT_MS } = {}) {
-    this.heartbeatMs = heartbeatMs;
-    /** @type {Map<string, { value: unknown, at: number }>} */
-    this.values = new Map();
-  }
-
-  /**
-   * True when the value is worth publishing: it changed, it was never
-   * published, or the last publication is older than the heartbeat (a stable
-   * value — "Online", the volume — must still reach Gladys now and then, or
-   * the front shows it as "no recent value").
-   */
-  changed(featureExternalId, value, now = Date.now()) {
-    const last = this.values.get(featureExternalId);
-    return last === undefined || last.value !== value || now - last.at >= this.heartbeatMs;
-  }
-
-  /**
-   * Record a value AFTER Gladys accepted it: recorded before, a failed
-   * publication would never be retried until the value changed.
-   */
-  remember(featureExternalId, value, now = Date.now()) {
-    this.values.set(featureExternalId, { value, at: now });
-  }
-
-  /** Forget the values of one device (its external_id is the prefix). */
-  forgetDevice(deviceExternalId) {
-    const prefix = `${deviceExternalId}:`;
-    for (const key of this.values.keys()) {
-      if (key.startsWith(prefix)) {
-        this.values.delete(key);
-      }
-    }
-  }
-
-  clear() {
-    this.values.clear();
-  }
-}

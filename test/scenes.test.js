@@ -215,7 +215,7 @@ test('a reconnection does not replay the events', async () => {
   const api = createFakeYotoApi({ devices: [PLAYER], statuses });
   const registry = new PlayerRegistry(api);
   await registry.pollOne(gladys, PLAYER, CONFIG);
-  registry.clearCache();
+  registry.clearCache(gladys);
   await registry.pollOne(gladys, PLAYER, CONFIG);
   assert.deepEqual(gladys.sceneEvents, []);
 });

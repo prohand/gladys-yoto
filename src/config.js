@@ -11,6 +11,8 @@
 // on disk.
 // -----------------------------------------------------------------------------
 
+import { DEVICE_POLL_FREQUENCIES } from '@gladysassistant/integration-sdk';
+
 // Defaults: they MUST stay consistent with the `default` values declared in the
 // `config_schema` of the manifest.
 export const DEFAULT_CONFIG = {
@@ -51,7 +53,8 @@ function clampPollFrequency(value) {
 // Gladys does NOT schedule an arbitrary interval: a device is attached to one
 // of these fixed ticks (milliseconds), and the core rejects the publication of
 // any other value ("invalid poll frequency"). The slowest tick is one minute.
-export const GLADYS_POLL_FREQUENCIES_MS = [1000, 2000, 10000, 15000, 30000, 60000];
+// The SDK mirrors the core's list, so it cannot drift from it.
+export const GLADYS_POLL_FREQUENCIES_MS = Object.values(DEVICE_POLL_FREQUENCIES);
 
 /**
  * The Gladys tick a player is registered on: the slowest one that is not
