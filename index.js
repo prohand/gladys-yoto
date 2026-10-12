@@ -382,7 +382,7 @@ gladys.on('connected', async () => {
     await tokenStore.persistIfPending();
     // Gladys may have missed states published while we were disconnected:
     // start from a clean cache so the next poll republishes everything.
-    registry.clearCache();
+    registry.clearCache(gladys);
     await accountInitialization.run();
   } catch (err) {
     logger.error('Post-connection initialization failed', err);

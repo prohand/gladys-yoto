@@ -6,24 +6,18 @@
 // Yoto app shows up on the next scan.
 //
 // The registry owns what has to survive between two polls: the known players,
-// the last published values (rate-limit friendly), the card-title cache, the
-// date of the last poll of each player (Gladys never ticks slower than a
-// minute: a longer interval is enforced here) and the last snapshot of each
-// player — the dashboard widgets are drawn from it, and comparing two
-// snapshots is what fires the scene triggers.
+// the card-title cache, the date of the last poll of each player (Gladys never
+// ticks slower than a minute: a longer interval is enforced here) and the last
+// snapshot of each player — the dashboard widgets are drawn from it, and
+// comparing two snapshots is what fires the scene triggers. The last published
+// values are the SDK's business (`publishChangedStates`).
 // -----------------------------------------------------------------------------
 
 import { createLogger } from '@gladysassistant/integration-sdk';
 import { gladysPollFrequency } from '../config.js';
 import { detectSceneEvents, nextBatteryLowLatch } from '../scenes.js';
 import { WIDGET } from '../widgets.js';
-import {
-  buildPlayerDevice,
-  playerExternalIds,
-  pollPlayer,
-  StateCache,
-  DEVICE_TYPE,
-} from './player.js';
+import { buildPlayerDevice, playerExternalIds, pollPlayer, DEVICE_TYPE } from './player.js';
 
 const logger = createLogger({ name: 'registry' });
 
@@ -40,7 +34,6 @@ export class PlayerRegistry {
     this.now = now;
     /** @type {Map<string, object>} Yoto deviceId -> player */
     this.players = new Map();
-    this.cache = new StateCache();
     this.cardTitles = new Map();
     /** @type {Map<string, number>} Gladys external_id -> date of the last poll */
     this.lastPollAt = new Map();
@@ -146,7 +139,6 @@ export class PlayerRegistry {
     this.lastPollAt.set(externalId, this.now());
     const snapshot = await pollPlayer(gladys, player, config, {
       api: this.api,
-      cache: this.cache,
       cardTitles: this.cardTitles,
       now: this.now,
     });
@@ -199,17 +191,20 @@ export class PlayerRegistry {
 
   /**
    * A device was just created (or updated) in Gladys: the states published
-   * before it existed were dropped by the core, so forget them and make its
-   * next poll due at once.
+   * before it existed were dropped by the core — the SDK has already
+   * forgotten them, so its next poll republishes everything — and that poll
+   * is made due at once.
    */
   forgetDevice(externalId) {
-    this.cache.forgetDevice(externalId);
     this.lastPollAt.delete(externalId);
   }
 
-  /** Values must be re-published after a reconnection: Gladys may have missed them. */
-  clearCache() {
-    this.cache.clear();
+  /**
+   * Values must be re-published after a reconnection: Gladys may have missed
+   * them, and the SDK does not forget its deduplication memory on its own then.
+   */
+  clearCache(gladys) {
+    gladys.forgetPublishedStates();
     // Same reason: the next tick must poll instead of waiting for the interval.
     this.lastPollAt.clear();
   }

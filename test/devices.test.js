@@ -11,7 +11,6 @@ import {
   buildPlayerDevice,
   FEATURE,
   playerExternalIds,
-  StateCache,
   STATE_HEARTBEAT_MS,
   CARD_TITLE_RETRY_MS,
 } from '../src/devices/player.js';
@@ -254,10 +253,13 @@ test('a reconnection re-arms the poll instead of waiting for the interval', asyn
   const device = registry.buildDiscoveredDevices(gladys, CONFIG)[0];
 
   await registry.poll(gladys, device, CONFIG);
-  registry.clearCache();
+  const before = gladys.published.length;
+  registry.clearCache(gladys);
   await registry.poll(gladys, device, CONFIG);
 
   assert.equal(api.calls.filter((call) => call.method === 'getDeviceConfig').length, 2);
+  // Gladys may have missed values while we were away: they all go out again.
+  assert.equal(gladys.published.length, before * 2);
 });
 
 test('the card title falls back to the card id when the library is not readable', async () => {
@@ -389,19 +391,29 @@ test('a device created after a first read gets every value again', async () => {
   const device = registry.buildDiscoveredDevices(gladys, CONFIG)[0];
   const before = gladys.published.length;
 
+  // What the SDK does when Gladys announces the creation, then our handler.
+  gladys.forgetPublishedStates(device.external_id);
   registry.forgetDevice(device.external_id);
   await registry.poll(gladys, device, CONFIG);
 
   assert.ok(gladys.published.length - before >= 9, 'every feature published again');
 });
 
-test('an unchanged value is republished once the heartbeat elapsed', () => {
-  const cache = new StateCache();
-  assert.equal(cache.changed('f', 1, 0), true);
-  cache.remember('f', 1, 0);
-  assert.equal(cache.changed('f', 1, STATE_HEARTBEAT_MS - 1), false);
-  assert.equal(cache.changed('f', 1, STATE_HEARTBEAT_MS), true);
-  assert.equal(cache.changed('f', 2, 1), true);
+test('unchanged values are not republished, except on the hourly heartbeat', async () => {
+  const gladys = createFakeGladys();
+  const registry = registryWithPlayer();
+  await registry.refresh();
+  await registry.pollAll(gladys, CONFIG);
+  const before = gladys.published.length;
+
+  await registry.pollAll(gladys, CONFIG);
+
+  assert.equal(gladys.published.length, before, 'nothing moved, nothing sent');
+  assert.ok(gladys.changedStatesCalls.length > 0);
+  for (const call of gladys.changedStatesCalls) {
+    assert.equal(call.heartbeat, STATE_HEARTBEAT_MS);
+  }
+  assert.equal(STATE_HEARTBEAT_MS, 60 * 60 * 1000);
 });
 
 test('a failed publication is retried on the next poll', async () => {
