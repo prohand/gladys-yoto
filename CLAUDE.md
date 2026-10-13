@@ -67,7 +67,7 @@ src/widgets.js         widgets `players` and `player`
   until charged), never on the first read. Keys are stored by users: never rename them.
 - **Every feature declares `min`/`max`** (NOT NULL in Gladys). Charging is `input/binary`, not a
   battery category (a battery category fired false low-battery alerts).
-- User-facing messages are bilingual `{ en, fr }`; errors also go to the connection badge
+- User-facing text is `{ en, fr, de, es }`; errors also go to the connection badge
   (`handleYotoError`), the only place the Configuration screen shows a message.
 
 ### Manifest
@@ -82,5 +82,5 @@ No network: the Yoto API and auth endpoints are stubbed (`globalThis.fetch`);
 
 ## Conventions
 
-Prettier formats, ESLint catches mistakes. Comments explain **why**. User docs in `docs/en.md`
-and `docs/fr.md`, kept in sync. The container rootfs is read-only: write nothing.
+Prettier formats, ESLint catches mistakes. Comments explain **why**. User docs in `docs/en.md`,
+`docs/fr.md`, `docs/de.md` and `docs/es.md`, kept in sync. The container rootfs is read-only: write nothing.

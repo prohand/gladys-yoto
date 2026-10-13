@@ -1,0 +1,161 @@
+# Integración Yoto
+
+Esta integración lleva a Gladys el estado de sus reproductores **Yoto**:
+batería, carga, volumen, tarjeta en curso, luz ambiente, temperatura del
+dispositivo, señal Wi-Fi y estado de conexión.
+
+## Qué obtiene
+
+Un dispositivo de Gladys por cada reproductor Yoto de la cuenta, con nueve sensores
+de solo lectura. La API pública de Yoto informa de la telemetría de los reproductores,
+pero no de los comandos de reproducción (reproducir, pausa, volumen), así que nada se
+puede controlar desde Gladys: las funcionalidades se declaran de solo lectura en lugar
+de mostrar un botón que no haría nada.
+
+Además de los dispositivos: dos widgets de panel, tres disparadores de escena y dos
+acciones de escena (ver más abajo).
+
+## Requisitos
+
+Gladys Assistant **5.1** o posterior.
+
+Una aplicación gratuita en el portal de desarrolladores de Yoto:
+
+1. Abra <https://dashboard.yoto.dev/> y cree una aplicación como **cliente público** (_public client_).
+2. Active los scopes `family:devices:view`, `family:devices:control`,
+   `family:library:view` y `offline_access`.
+3. Copie el **Client ID**.
+
+Yoto ha retirado el flujo _device code_: la integración usa el flujo por navegador
+que Yoto recomienda ahora (authorization code + PKCE), por lo que la aplicación
+también necesita la URL de retorno de Gladys en sus **Allowed callback URLs**: ver
+más abajo.
+
+## Configuración
+
+1. Abra la pestaña **Configuración** de la integración.
+2. Pegue el **Client ID de Yoto** y guarde.
+3. Pulse **Conectar** una primera vez y abra los registros de la integración: la
+   línea `Yoto sign-in started, callback URL to allow on the Yoto app: …` indica la
+   URL exacta que debe pegar en las **Allowed callback URLs** de su aplicación Yoto.
+4. Pulse **Conectar** de nuevo: inicie sesión en la página de Yoto, Yoto redirige de
+   vuelta a Gladys y el indicador de conexión se pone en verde.
+5. Los reproductores aparecen en la pestaña **Descubrir**, listos para añadirse.
+
+Ajustes:
+
+- **Intervalo de actualización** (`poll_frequency`): de 30 a 3600 segundos, 120 por
+  defecto. Es la frecuencia con la que se lee cada reproductor. La API de Yoto es
+  una API en la nube: manténgase por encima de 60 segundos salvo que realmente
+  necesite más. Gladys programa en intervalos fijos (60 segundos como máximo): un
+  valor entre 30 y 59 segundos usa el intervalo de 30 segundos, y cualquier valor
+  superior a 60 segundos lo respeta la propia integración. Un cambio se aplica de
+  inmediato, sin volver a crear ningún dispositivo.
+- **Pedir al reproductor que se actualice antes de leer**: envía una solicitud de
+  estado al reproductor antes de cada consulta, para leer valores recientes en lugar
+  de los últimos que comunicó (la integración espera un segundo la respuesta del
+  reproductor antes de leer). Desactívelo si a su aplicación Yoto le falta el scope
+  `family:devices:control`.
+
+Gladys guarda los tokens internamente (nunca se muestran en la interfaz): la
+vinculación sobrevive a un reinicio o a una actualización de la imagen.
+
+## Acciones
+
+- **Probar la conexión**: consulta la cuenta Yoto y muestra cuántos reproductores
+  se han encontrado, con sus nombres.
+- **Actualizar todos los reproductores ahora**: consulta todos los reproductores de
+  inmediato, sin esperar al siguiente ciclo.
+
+## Widgets del panel
+
+Requiere Gladys 5.1 o posterior. Añádalos desde **Panel → Editar → Nuevo widget**:
+
+- **Reproductores Yoto**: todos los reproductores de la cuenta en una tarjeta: la
+  tarjeta en curso, el nivel de batería (verde, naranja por debajo del 50 %, rojo
+  por debajo del 20 %, un ⚡ cuando está conectado a la corriente) y si está en
+  línea. Pulse una fila para ver los detalles (volumen, temperatura, luz, Wi-Fi).
+- **Reproductor Yoto**: un reproductor, elegido en los ajustes del widget: casillas
+  de batería, volumen y temperatura actualizadas en directo, la curva de batería de
+  las últimas 24 horas y el estado de reproducción, alimentación y conexión.
+
+Ambos tienen un botón **Actualizar** que lee los reproductores al instante. Los
+widgets se dibujan a partir de la última lectura: abrir un panel nunca consulta
+Yoto.
+
+## Escenas
+
+Requiere Gladys 5.1 o posterior.
+
+Disparadores (el filtro **Reproductor** es opcional: vacío significa cualquier
+reproductor):
+
+- **Una tarjeta empieza en un reproductor Yoto**: filtro opcional por el título
+  exacto de la tarjeta. Variables: nombre del reproductor, título de la tarjeta,
+  identificador de la tarjeta.
+- **Un reproductor Yoto deja de reproducir**: variables: nombre del reproductor,
+  título e identificador de la tarjeta que se estaba reproduciendo.
+- **Batería baja de un reproductor Yoto (menos del 20 %)**: se dispara una vez
+  cuando la batería baja del 20 % mientras el reproductor no está conectado a la
+  corriente; solo vuelve a dispararse tras una carga (o al volver por encima del
+  25 %). Variables: nombre del reproductor, nivel de batería.
+
+Los eventos se detectan en cada actualización (cada 120 s por defecto), así que un
+disparador puede activarse con hasta un intervalo de actualización de retraso. No se
+dispara nada en la primera lectura tras un reinicio.
+
+Acciones:
+
+- **Leer un reproductor Yoto**: lee el reproductor ahora y pasa sus valores a los
+  siguientes pasos: nombre, en línea, batería, conectado a la corriente, volumen,
+  reproduciendo, título de la tarjeta, temperatura, señal Wi-Fi. Útil para una
+  condición («si la batería está por debajo del 30 %, enviar un mensaje») o un
+  mensaje («{{player_name}} está reproduciendo {{card_title}}»).
+- **Actualizar todos los reproductores Yoto**: lee todos los reproductores ahora;
+  devuelve cuántos se han leído.
+
+No es posible iniciar una tarjeta, pausar o cambiar el volumen desde Gladys: la API
+pública de Yoto no ofrece estos comandos (pasan por un canal privado de Yoto).
+
+## Solución de problemas
+
+- **Alerta de nivel de batería («Battery below 10 % (current: 1 %)») con el
+  reproductor cargado**: corregido después de la 2.0.0: la funcionalidad
+  «Charging» estaba en la categoría de batería, y la comprobación semanal de
+  Gladys la leía como un porcentaje (1 = conectado a la corriente). Tras la
+  actualización, abra la pestaña **Descubrir** y pulse **Actualizar** en el
+  reproductor (o elimínelo y vuelva a añadirlo) para que la funcionalidad pase a
+  su nueva categoría.
+- **«Todavía no hay ninguna cuenta Yoto vinculada: pulse Conectar.»**: el Client ID
+  está configurado, pero la cuenta nunca se vinculó, o la vinculación ha caducado.
+- **«La vinculación con Yoto ha caducado, vuelva a conectar su cuenta.»**: el token
+  se ha revocado (cambio de contraseña, aplicación eliminada en Yoto). Pulse
+  **Conectar** de nuevo. Un token de acceso que Yoto rechaza antes de tiempo se
+  renueva primero una vez automáticamente: este mensaje solo aparece cuando Yoto
+  rechaza también la renovación.
+- **«No se puede acceder al servicio Yoto, consulte los registros de la
+  integración.»**: ha fallado una lectura (Yoto caído, red cortada). No hay nada que
+  hacer: el indicador vuelve a ponerse en verde en la siguiente lectura correcta.
+  Cuando el contenedor arranca antes de que la red esté disponible, la cuenta Yoto
+  se vuelve a leer al cabo de 1 minuto, de 5 minutos y después cada 15 minutos hasta
+  que los reproductores aparecen en la pestaña **Descubrir**.
+- **Yoto responde «Callback URL mismatch»**: la URL que se muestra en esa página de
+  Yoto es la de retorno de Gladys: añádala a las **Allowed callback URLs** de su
+  aplicación Yoto y pulse **Conectar** de nuevo.
+- **«No se pudo iniciar la conexión con Yoto: …»**: el motivo se detalla en el
+  mensaje y en los registros. `unauthorized_client` en el endpoint device code
+  significa que la aplicación Yoto no tiene el grant device code: Yoto lo ha
+  retirado, actualice Gladys para que se use el flujo por navegador.
+- **«No Yoto sign-in is in progress»**: la integración se reinició entre el clic en
+  **Conectar** y el regreso desde Yoto; pulse **Conectar** de nuevo.
+- **Valores desactualizados o ausentes**: un reproductor apagado o sin conexión no
+  informa de nada: la integración conserva el último estado conocido y el sensor
+  «Online» pasa a 0. Los sensores que un modelo no tiene (la temperatura en un Yoto
+  Mini, por ejemplo) simplemente no se publican.
+- **Errores 401/403 en los registros**: los scopes de su aplicación Yoto están
+  incompletos. Revíselos en el portal de desarrolladores y vuelva a vincular la
+  cuenta.
+
+La integración registra todo lo que hace: lea los registros desde la interfaz de
+Gladys (o con `docker logs` en el host) con `LOG_LEVEL=debug` para obtener todo el
+detalle.

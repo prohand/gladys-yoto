@@ -83,6 +83,8 @@ gladys.onOAuthAuthorizeUrl(async (key, redirectUri) => {
     await reportDisconnected({
       en: `Could not start the Yoto sign-in: ${err.message}`,
       fr: `Impossible de lancer la connexion Yoto : ${err.message}`,
+      de: `Die Yoto-Anmeldung konnte nicht gestartet werden: ${err.message}`,
+      es: `No se pudo iniciar la conexión con Yoto: ${err.message}`,
     });
     throw err;
   }
@@ -116,10 +118,17 @@ async function startDeviceLink() {
     logger.error('Yoto pairing failed', err);
     reportDisconnected(
       err instanceof YotoAuthError
-        ? { en: `Yoto pairing failed: ${err.message}`, fr: `Liaison Yoto échouée : ${err.message}` }
+        ? {
+            en: `Yoto pairing failed: ${err.message}`,
+            fr: `Liaison Yoto échouée : ${err.message}`,
+            de: `Yoto-Verknüpfung fehlgeschlagen: ${err.message}`,
+            es: `Falló la vinculación con Yoto: ${err.message}`,
+          }
         : {
             en: 'Yoto pairing failed, check the integration logs.',
             fr: 'Liaison Yoto échouée, consultez les logs.',
+            de: 'Yoto-Verknüpfung fehlgeschlagen, prüfe die Protokolle der Integration.',
+            es: 'Falló la vinculación con Yoto, consulte los registros de la integración.',
           },
     );
   });
@@ -153,6 +162,8 @@ gladys.onOAuthCallback(async (key, { code, state, redirectUri }) => {
     await reportDisconnected({
       en: `Yoto sign-in failed: ${err.message}`,
       fr: `Connexion Yoto échouée : ${err.message}`,
+      de: `Yoto-Anmeldung fehlgeschlagen: ${err.message}`,
+      es: `Falló el inicio de sesión en Yoto: ${err.message}`,
     });
     throw err;
   }
@@ -225,12 +236,16 @@ gladys.onAction('test_connection', async () => {
     return {
       en: 'Connected to Yoto, but this account has no player.',
       fr: 'Connexion à Yoto réussie, mais aucun lecteur sur ce compte.',
+      de: 'Mit Yoto verbunden, aber dieses Konto hat keinen Player.',
+      es: 'Conectado a Yoto, pero esta cuenta no tiene ningún reproductor.',
     };
   }
   const names = players.map((player) => player.name).join(', ');
   return {
     en: `Connected to Yoto: ${players.length} player(s) — ${names}.`,
     fr: `Connexion à Yoto réussie : ${players.length} lecteur(s) — ${names}.`,
+    de: `Mit Yoto verbunden: ${players.length} Player — ${names}.`,
+    es: `Conectado a Yoto: ${players.length} reproductor(es) — ${names}.`,
   };
 });
 
@@ -239,6 +254,8 @@ gladys.onAction('refresh_now', async () => {
   return {
     en: `${count} player(s) refreshed.`,
     fr: `${count} lecteur(s) rafraîchi(s).`,
+    de: `${count} Player aktualisiert.`,
+    es: `${count} reproductor(es) actualizado(s).`,
   };
 });
 
@@ -272,6 +289,8 @@ gladys.onWidgetAction(WIDGET.PLAYERS, async (actionKey) => {
   return {
     en: `${count} player(s) refreshed.`,
     fr: `${count} lecteur(s) rafraîchi(s).`,
+    de: `${count} Player aktualisiert.`,
+    es: `${count} reproductor(es) actualizado(s).`,
   };
 });
 
@@ -279,7 +298,12 @@ gladys.onWidgetAction(WIDGET.PLAYER, async (actionKey, params, { settings }) => 
   assertWidgetAction(actionKey);
   const player = await findPlayerOrThrow(settings.player);
   await readYoto(registry.pollOne(gladys, player, config), 'Widget refresh failed');
-  return { en: `${player.name} refreshed.`, fr: `${player.name} rafraîchi.` };
+  return {
+    en: `${player.name} refreshed.`,
+    fr: `${player.name} rafraîchi.`,
+    de: `${player.name} aktualisiert.`,
+    es: `${player.name} actualizado.`,
+  };
 });
 
 function assertWidgetAction(actionKey) {
@@ -357,6 +381,8 @@ gladys.onConfigUpdated(async (newConfig) => {
     await reportDisconnected({
       en: 'Client ID changed, please connect your Yoto account again.',
       fr: 'Client ID modifié, reconnectez votre compte Yoto.',
+      de: 'Client ID geändert, bitte verbinde dein Yoto-Konto erneut.',
+      es: 'Client ID modificado, vuelva a conectar su cuenta Yoto.',
     });
     return;
   }
@@ -407,6 +433,8 @@ async function initializeAccount() {
     await reportDisconnected({
       en: 'Fill in your Yoto Client ID, then connect your account.',
       fr: 'Renseignez votre Client ID Yoto, puis connectez votre compte.',
+      de: 'Gib deine Yoto Client ID ein und verbinde dann dein Konto.',
+      es: 'Introduzca su Client ID de Yoto y después conecte su cuenta.',
     });
     return true;
   }
@@ -414,6 +442,8 @@ async function initializeAccount() {
     await reportDisconnected({
       en: 'No Yoto account linked yet: click Connect.',
       fr: 'Aucun compte Yoto lié : cliquez sur Connecter.',
+      de: 'Noch kein Yoto-Konto verknüpft: Klicke auf Verbinden.',
+      es: 'Todavía no hay ninguna cuenta Yoto vinculada: pulse Conectar.',
     });
     return true;
   }
@@ -447,12 +477,16 @@ async function handleYotoError(err, context) {
     await reportDisconnected({
       en: 'The Yoto link expired, please connect your account again.',
       fr: 'La liaison Yoto a expiré, reconnectez votre compte.',
+      de: 'Die Yoto-Verknüpfung ist abgelaufen, bitte verbinde dein Konto erneut.',
+      es: 'La vinculación con Yoto ha caducado, vuelva a conectar su cuenta.',
     });
     return;
   }
   await reportDisconnected({
     en: 'Cannot reach the Yoto service, check the integration logs.',
     fr: 'Service Yoto injoignable, consultez les logs de l’intégration.',
+    de: 'Yoto-Dienst nicht erreichbar, prüfe die Protokolle der Integration.',
+    es: 'No se puede acceder al servicio Yoto, consulte los registros de la integración.',
   });
 }
 

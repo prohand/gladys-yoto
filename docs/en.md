@@ -38,7 +38,7 @@ Gladys callback URL in its **Allowed callback URLs** — see below.
    exact URL to paste in the **Allowed callback URLs** of your Yoto app.
 4. Click **Connect** again: sign in on the Yoto page, Yoto redirects back to
    Gladys and the connection badge turns green.
-5. The players show up in the **Discovery** tab, ready to be added.
+5. The players show up in the **Discover** tab, ready to be added.
 
 Settings:
 
@@ -67,7 +67,7 @@ survives a restart or an image update.
 
 ## Dashboard widgets
 
-Requires Gladys 5.1 or later. Add them from the dashboard editor:
+Requires Gladys 5.1 or later. Add them from **Dashboard → Edit → New widget**:
 
 - **Yoto players** — every player of the account in one card: the card being
   played, the battery level (green, orange under 50 %, red under 20 %, a ⚡
@@ -117,8 +117,8 @@ Yoto channel).
 - **"Battery below 10 % (current: 1 %)" alert while the player is charged** —
   fixed after 2.0.0: the "Charging" feature sat in the battery category, and the
   weekly Gladys check read it as a percentage (1 = plugged in). After the
-  update, open the **Discover** tab and update the player (or delete and add
-  it again) so the feature moves to its new category.
+  update, open the **Discover** tab and click **Update** on the player (or
+  delete and add it again) so the feature moves to its new category.
 - **"No Yoto account linked yet: click Connect"** — the Client ID is set but the
   account was never linked, or the link expired.
 - **"The Yoto link expired, please connect your account again"** — the token was
@@ -129,7 +129,7 @@ Yoto channel).
   failed (Yoto down, network cut). Nothing to do: the badge turns green again at
   the next successful read. When the container starts before the network is up,
   the Yoto account is read again after 1 minute, 5 minutes, then every
-  15 minutes until the players appear in the **Discovery** tab.
+  15 minutes until the players appear in the **Discover** tab.
 - **Yoto answers "Callback URL mismatch"** — the URL shown on that Yoto page is
   the Gladys callback: add it to the **Allowed callback URLs** of your Yoto app,
   then click **Connect** again.

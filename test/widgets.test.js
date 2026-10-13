@@ -1,7 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { validateWidgetContent } from '@gladysassistant/integration-sdk';
-import { buildPlayerContent, buildPlayersContent, WIDGET_ACTION_REFRESH } from '../src/widgets.js';
+import {
+  buildPlayerContent,
+  buildPlayersContent,
+  LANGUAGES,
+  WIDGET_ACTION_REFRESH,
+} from '../src/widgets.js';
 import { FEATURE, playerExternalIds } from '../src/devices/player.js';
 import { createFakeGladys } from './helpers/fakeGladys.js';
 
@@ -79,4 +84,38 @@ test('player widget: offline, not read yet and removed players still render', ()
   assertRenderedAsSent(buildPlayerContent(gladys, PLAYER, offline));
   assertRenderedAsSent(buildPlayerContent(gladys, PLAYER, undefined));
   assertRenderedAsSent(buildPlayerContent(gladys, null, undefined));
+});
+
+/** Every multi-language object of a widget content. */
+function texts(node) {
+  if (Array.isArray(node)) {
+    return node.flatMap(texts);
+  }
+  if (node && typeof node === 'object') {
+    return typeof node.en === 'string' ? [node] : Object.values(node).flatMap(texts);
+  }
+  return [];
+}
+
+test('every widget text is sent in English, French, German and Spanish', () => {
+  const gladys = createFakeGladys();
+  const offline = { ...SNAPSHOT, online: false, charging: null, wifiStrength: null };
+  const contents = [
+    buildPlayersContent([PLAYER], new Map([[PLAYER.deviceId, SNAPSHOT]])),
+    buildPlayersContent([PLAYER], new Map([[PLAYER.deviceId, { ...SNAPSHOT, charging: true }]])),
+    buildPlayersContent([], new Map()),
+    buildPlayerContent(gladys, PLAYER, SNAPSHOT),
+    buildPlayerContent(gladys, PLAYER, offline),
+    buildPlayerContent(gladys, PLAYER, { ...SNAPSHOT, playing: false, charging: true }),
+    buildPlayerContent(gladys, PLAYER, undefined),
+    buildPlayerContent(gladys, null, undefined),
+  ];
+  const found = contents.flatMap(texts);
+  assert.ok(found.length > 20);
+  for (const text of found) {
+    assert.deepEqual(Object.keys(text).sort(), [...LANGUAGES].sort(), JSON.stringify(text));
+    for (const language of LANGUAGES) {
+      assert.equal(typeof text[language], 'string', JSON.stringify(text));
+    }
+  }
 });
