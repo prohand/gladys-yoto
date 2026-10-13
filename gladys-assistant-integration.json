@@ -4,7 +4,9 @@
   "name": "Yoto",
   "description": {
     "en": "Monitor your Yoto players: battery, charge, volume, playing card, ambient light and Wi-Fi signal.",
-    "fr": "Supervisez vos lecteurs Yoto : batterie, charge, volume, carte en cours, luminosité et signal Wi-Fi."
+    "fr": "Supervisez vos lecteurs Yoto : batterie, charge, volume, carte en cours, luminosité et signal Wi-Fi.",
+    "de": "Überwachen Sie Ihre Yoto-Player: Akku, Ladung, Lautstärke, laufende Karte, Helligkeit und WLAN.",
+    "es": "Supervise sus reproductores Yoto: batería, carga, volumen, tarjeta en curso, luz y señal Wi-Fi."
   },
   "version": "2.2.2",
   "docker_image": "ghcr.io/prohand/gladys-yoto:2.2.2",
@@ -22,25 +24,33 @@
       "type": "section",
       "label": {
         "en": "Getting started",
-        "fr": "Pour commencer"
+        "fr": "Pour commencer",
+        "de": "Erste Schritte",
+        "es": "Primeros pasos"
       },
       "description": {
         "en": "Create a free app on the Yoto developer dashboard as a public client, paste its Client ID below, save, then click Connect: Yoto opens its sign-in page and redirects back to Gladys. Enable the scopes family:devices:view, family:devices:control, family:library:view and offline_access, and allow the Gladys callback URL logged by the integration when you click Connect.",
-        "fr": "Créez une application gratuite sur le portail développeur Yoto en client public, collez son Client ID ci-dessous, enregistrez, puis cliquez sur Connecter : Yoto ouvre sa page de connexion puis renvoie vers Gladys. Activez les scopes family:devices:view, family:devices:control, family:library:view et offline_access, et autorisez l'URL de rappel Gladys que l'intégration affiche dans ses logs au clic sur Connecter."
+        "fr": "Créez une application gratuite sur le portail développeur Yoto en client public, collez son Client ID ci-dessous, enregistrez, puis cliquez sur Connecter : Yoto ouvre sa page de connexion puis renvoie vers Gladys. Activez les scopes family:devices:view, family:devices:control, family:library:view et offline_access, et autorisez l'URL de rappel Gladys que l'intégration affiche dans ses logs au clic sur Connecter.",
+        "de": "Erstellen Sie im Yoto-Entwicklerportal eine kostenlose App als öffentlichen Client, fügen Sie deren Client ID unten ein, speichern Sie und klicken Sie dann auf Verbinden: Yoto öffnet seine Anmeldeseite und leitet zurück zu Gladys. Aktivieren Sie die Scopes family:devices:view, family:devices:control, family:library:view und offline_access und erlauben Sie die Gladys-Callback-URL, die die Integration beim Klick auf Verbinden in ihre Protokolle schreibt.",
+        "es": "Cree una aplicación gratuita en el portal de desarrolladores de Yoto como cliente público, pegue su Client ID a continuación, guarde y pulse Conectar: Yoto abre su página de inicio de sesión y redirige de vuelta a Gladys. Active los scopes family:devices:view, family:devices:control, family:library:view y offline_access, y autorice la URL de retorno de Gladys que la integración muestra en sus registros al pulsar Conectar."
       },
       "links": [
         {
           "url": "https://dashboard.yoto.dev/",
           "label": {
             "en": "Yoto developer dashboard",
-            "fr": "Portail développeur Yoto"
+            "fr": "Portail développeur Yoto",
+            "de": "Yoto-Entwicklerportal",
+            "es": "Portal de desarrolladores de Yoto"
           }
         },
         {
           "url": "https://yoto.dev/authentication/auth/",
           "label": {
             "en": "Yoto authentication guide",
-            "fr": "Guide d'authentification Yoto"
+            "fr": "Guide d'authentification Yoto",
+            "de": "Yoto-Authentifizierungsleitfaden",
+            "es": "Guía de autenticación de Yoto"
           }
         }
       ]
@@ -50,11 +60,15 @@
       "type": "string",
       "label": {
         "en": "Yoto Client ID",
-        "fr": "Client ID Yoto"
+        "fr": "Client ID Yoto",
+        "de": "Yoto Client ID",
+        "es": "Client ID de Yoto"
       },
       "description": {
         "en": "Client ID of your Yoto app (public client, authorization code flow with PKCE).",
-        "fr": "Client ID de votre application Yoto (client public, flux authorization code avec PKCE)."
+        "fr": "Client ID de votre application Yoto (client public, flux authorization code avec PKCE).",
+        "de": "Client ID Ihrer Yoto-App (öffentlicher Client, Authorization-Code-Flow mit PKCE).",
+        "es": "Client ID de su aplicación Yoto (cliente público, flujo authorization code con PKCE)."
       },
       "required": true
     },
@@ -63,11 +77,15 @@
       "type": "oauth2",
       "label": {
         "en": "Yoto account",
-        "fr": "Compte Yoto"
+        "fr": "Compte Yoto",
+        "de": "Yoto-Konto",
+        "es": "Cuenta Yoto"
       },
       "description": {
         "en": "Click Connect, sign in on the Yoto page, and you are redirected back here. The link stays valid: the integration refreshes its token on its own.",
-        "fr": "Cliquez sur Connecter, identifiez-vous sur la page Yoto, vous êtes ensuite redirigé ici. La liaison reste valide : l'intégration renouvelle son jeton toute seule."
+        "fr": "Cliquez sur Connecter, identifiez-vous sur la page Yoto, vous êtes ensuite redirigé ici. La liaison reste valide : l'intégration renouvelle son jeton toute seule.",
+        "de": "Klicken Sie auf Verbinden und melden Sie sich auf der Yoto-Seite an, danach werden Sie hierher zurückgeleitet. Die Verknüpfung bleibt gültig: Die Integration erneuert ihr Token selbstständig.",
+        "es": "Pulse Conectar e inicie sesión en la página de Yoto; después volverá aquí. La vinculación sigue siendo válida: la integración renueva su token por sí sola."
       },
       "required": true
     },
@@ -76,11 +94,15 @@
       "type": "number",
       "label": {
         "en": "Refresh interval (s)",
-        "fr": "Intervalle de rafraîchissement (s)"
+        "fr": "Intervalle de rafraîchissement (s)",
+        "de": "Aktualisierungsintervall (s)",
+        "es": "Intervalo de actualización (s)"
       },
       "description": {
         "en": "How often each player is polled, in seconds. The Yoto API is a cloud API: stay above 60 s unless you really need more. Gladys schedules on fixed ticks (60 s at the slowest), so a value between 30 and 59 s is served by the 30 s tick and a longer one is honoured by the integration itself.",
-        "fr": "Fréquence d'interrogation de chaque lecteur, en secondes. L'API Yoto est une API cloud : restez au-dessus de 60 s sauf besoin réel. Gladys planifie sur des cadences fixes (60 s au plus lent) : une valeur entre 30 et 59 s passe par la cadence 30 s, une valeur plus longue est respectée par l'intégration elle-même."
+        "fr": "Fréquence d'interrogation de chaque lecteur, en secondes. L'API Yoto est une API cloud : restez au-dessus de 60 s sauf besoin réel. Gladys planifie sur des cadences fixes (60 s au plus lent) : une valeur entre 30 et 59 s passe par la cadence 30 s, une valeur plus longue est respectée par l'intégration elle-même.",
+        "de": "Wie oft jeder Player abgefragt wird, in Sekunden. Die Yoto-API ist eine Cloud-API: Bleiben Sie über 60 s, sofern Sie nicht wirklich mehr brauchen. Gladys plant in festen Takten (höchstens 60 s): Ein Wert zwischen 30 und 59 s läuft über den 30-s-Takt, ein längerer Wert wird von der Integration selbst eingehalten.",
+        "es": "Frecuencia con la que se consulta cada reproductor, en segundos. La API de Yoto es una API en la nube: manténgase por encima de 60 s salvo que realmente necesite más. Gladys programa en intervalos fijos (60 s como máximo): un valor entre 30 y 59 s usa el intervalo de 30 s y uno más largo lo respeta la propia integración."
       },
       "required": false,
       "default": 120,
@@ -92,11 +114,15 @@
       "type": "boolean",
       "label": {
         "en": "Ask the player to refresh before reading",
-        "fr": "Demander au lecteur de se rafraîchir avant lecture"
+        "fr": "Demander au lecteur de se rafraîchir avant lecture",
+        "de": "Player vor dem Auslesen aktualisieren lassen",
+        "es": "Pedir al reproductor que se actualice antes de leer"
       },
       "description": {
         "en": "Sends a status request to the player before each poll, so the values read are fresh instead of the last ones it reported. Requires the family:devices:control scope.",
-        "fr": "Envoie une demande de statut au lecteur avant chaque interrogation, pour lire des valeurs fraîches plutôt que les dernières remontées. Nécessite le scope family:devices:control."
+        "fr": "Envoie une demande de statut au lecteur avant chaque interrogation, pour lire des valeurs fraîches plutôt que les dernières remontées. Nécessite le scope family:devices:control.",
+        "de": "Sendet vor jeder Abfrage eine Statusanfrage an den Player, damit aktuelle Werte gelesen werden statt der zuletzt gemeldeten. Erfordert den Scope family:devices:control.",
+        "es": "Envía una solicitud de estado al reproductor antes de cada consulta, para leer valores recientes en lugar de los últimos que comunicó. Requiere el scope family:devices:control."
       },
       "required": false,
       "default": true
@@ -107,7 +133,9 @@
       "key": "test_connection",
       "label": {
         "en": "Test the connection",
-        "fr": "Tester la connexion"
+        "fr": "Tester la connexion",
+        "de": "Verbindung testen",
+        "es": "Probar la conexión"
       },
       "timeout_seconds": 30
     },
@@ -115,7 +143,9 @@
       "key": "refresh_now",
       "label": {
         "en": "Refresh all players now",
-        "fr": "Rafraîchir tous les lecteurs"
+        "fr": "Rafraîchir tous les lecteurs",
+        "de": "Alle Player jetzt aktualisieren",
+        "es": "Actualizar todos los reproductores ahora"
       },
       "timeout_seconds": 60
     }
@@ -125,12 +155,16 @@
       "key": "players",
       "label": {
         "en": "Yoto players",
-        "fr": "Lecteurs Yoto"
+        "fr": "Lecteurs Yoto",
+        "de": "Alle Yoto-Player",
+        "es": "Reproductores Yoto"
       },
       "icon": "music",
       "description": {
         "en": "Every player of the account: what it plays, its battery, online or not.",
-        "fr": "Tous les lecteurs du compte : ce qu'ils jouent, leur batterie, en ligne ou non."
+        "fr": "Tous les lecteurs du compte : ce qu'ils jouent, leur batterie, en ligne ou non.",
+        "de": "Alle Player des Kontos: was sie abspielen, ihr Akku, online oder nicht.",
+        "es": "Todos los reproductores de la cuenta: qué reproducen, su batería y si están en línea."
       },
       "action_timeout_seconds": 60
     },
@@ -138,12 +172,16 @@
       "key": "player",
       "label": {
         "en": "Yoto player",
-        "fr": "Lecteur Yoto"
+        "fr": "Lecteur Yoto",
+        "de": "Yoto-Player",
+        "es": "Reproductor Yoto"
       },
       "icon": "speaker",
       "description": {
         "en": "One player: battery, volume, temperature, 24 h battery curve and playback state.",
-        "fr": "Un lecteur : batterie, volume, température, courbe de batterie sur 24 h et état de lecture."
+        "fr": "Un lecteur : batterie, volume, température, courbe de batterie sur 24 h et état de lecture.",
+        "de": "Ein Player: Akku, Lautstärke, Temperatur, Akkukurve über 24 h und Wiedergabestatus.",
+        "es": "Un reproductor: batería, volumen, temperatura, curva de batería de 24 h y estado de reproducción."
       },
       "settings": [
         {
@@ -152,7 +190,9 @@
           "source": "devices",
           "label": {
             "en": "Player",
-            "fr": "Lecteur"
+            "fr": "Lecteur",
+            "de": "Player",
+            "es": "Reproductor"
           },
           "required": true
         }
@@ -165,7 +205,9 @@
       "key": "card_started",
       "label": {
         "en": "A card starts on a Yoto player",
-        "fr": "Une carte démarre sur un lecteur Yoto"
+        "fr": "Une carte démarre sur un lecteur Yoto",
+        "de": "Eine Karte startet auf einem Yoto-Player",
+        "es": "Una tarjeta empieza en un reproductor Yoto"
       },
       "fields": [
         {
@@ -174,11 +216,15 @@
           "source": "devices",
           "label": {
             "en": "Player",
-            "fr": "Lecteur"
+            "fr": "Lecteur",
+            "de": "Player",
+            "es": "Reproductor"
           },
           "description": {
             "en": "Leave empty for any player.",
-            "fr": "Laissez vide pour n'importe quel lecteur."
+            "fr": "Laissez vide pour n'importe quel lecteur.",
+            "de": "Leer lassen für einen beliebigen Player.",
+            "es": "Déjelo vacío para cualquier reproductor."
           }
         },
         {
@@ -186,11 +232,15 @@
           "type": "string",
           "label": {
             "en": "Card title",
-            "fr": "Titre de la carte"
+            "fr": "Titre de la carte",
+            "de": "Kartentitel",
+            "es": "Título de la tarjeta"
           },
           "description": {
             "en": "Exact title, leave empty for any card.",
-            "fr": "Titre exact, laissez vide pour n'importe quelle carte."
+            "fr": "Titre exact, laissez vide pour n'importe quelle carte.",
+            "de": "Genauer Titel, leer lassen für eine beliebige Karte.",
+            "es": "Título exacto, déjelo vacío para cualquier tarjeta."
           }
         }
       ],
@@ -200,7 +250,9 @@
           "type": "string",
           "label": {
             "en": "Player name",
-            "fr": "Nom du lecteur"
+            "fr": "Nom du lecteur",
+            "de": "Name des Players",
+            "es": "Nombre del reproductor"
           }
         },
         {
@@ -208,7 +260,9 @@
           "type": "string",
           "label": {
             "en": "Card title",
-            "fr": "Titre de la carte"
+            "fr": "Titre de la carte",
+            "de": "Kartentitel",
+            "es": "Título de la tarjeta"
           }
         },
         {
@@ -216,7 +270,9 @@
           "type": "string",
           "label": {
             "en": "Card id",
-            "fr": "Identifiant de la carte"
+            "fr": "Identifiant de la carte",
+            "de": "Karten-ID",
+            "es": "Identificador de la tarjeta"
           }
         }
       ]
@@ -225,7 +281,9 @@
       "key": "card_stopped",
       "label": {
         "en": "A Yoto player stops playing",
-        "fr": "Un lecteur Yoto arrête la lecture"
+        "fr": "Un lecteur Yoto arrête la lecture",
+        "de": "Ein Yoto-Player beendet die Wiedergabe",
+        "es": "Un reproductor Yoto deja de reproducir"
       },
       "fields": [
         {
@@ -234,11 +292,15 @@
           "source": "devices",
           "label": {
             "en": "Player",
-            "fr": "Lecteur"
+            "fr": "Lecteur",
+            "de": "Player",
+            "es": "Reproductor"
           },
           "description": {
             "en": "Leave empty for any player.",
-            "fr": "Laissez vide pour n'importe quel lecteur."
+            "fr": "Laissez vide pour n'importe quel lecteur.",
+            "de": "Leer lassen für einen beliebigen Player.",
+            "es": "Déjelo vacío para cualquier reproductor."
           }
         }
       ],
@@ -248,7 +310,9 @@
           "type": "string",
           "label": {
             "en": "Player name",
-            "fr": "Nom du lecteur"
+            "fr": "Nom du lecteur",
+            "de": "Name des Players",
+            "es": "Nombre del reproductor"
           }
         },
         {
@@ -256,7 +320,9 @@
           "type": "string",
           "label": {
             "en": "Card title",
-            "fr": "Titre de la carte"
+            "fr": "Titre de la carte",
+            "de": "Kartentitel",
+            "es": "Título de la tarjeta"
           }
         },
         {
@@ -264,7 +330,9 @@
           "type": "string",
           "label": {
             "en": "Card id",
-            "fr": "Identifiant de la carte"
+            "fr": "Identifiant de la carte",
+            "de": "Karten-ID",
+            "es": "Identificador de la tarjeta"
           }
         }
       ]
@@ -273,7 +341,9 @@
       "key": "battery_low",
       "label": {
         "en": "Yoto player battery low (under 20 %)",
-        "fr": "Batterie faible d'un lecteur Yoto (sous 20 %)"
+        "fr": "Batterie faible d'un lecteur Yoto (sous 20 %)",
+        "de": "Akku eines Yoto-Players schwach (unter 20 %)",
+        "es": "Batería baja de un reproductor Yoto (menos del 20 %)"
       },
       "fields": [
         {
@@ -282,11 +352,15 @@
           "source": "devices",
           "label": {
             "en": "Player",
-            "fr": "Lecteur"
+            "fr": "Lecteur",
+            "de": "Player",
+            "es": "Reproductor"
           },
           "description": {
             "en": "Leave empty for any player.",
-            "fr": "Laissez vide pour n'importe quel lecteur."
+            "fr": "Laissez vide pour n'importe quel lecteur.",
+            "de": "Leer lassen für einen beliebigen Player.",
+            "es": "Déjelo vacío para cualquier reproductor."
           }
         }
       ],
@@ -296,7 +370,9 @@
           "type": "string",
           "label": {
             "en": "Player name",
-            "fr": "Nom du lecteur"
+            "fr": "Nom du lecteur",
+            "de": "Name des Players",
+            "es": "Nombre del reproductor"
           }
         },
         {
@@ -304,7 +380,9 @@
           "type": "number",
           "label": {
             "en": "Battery (%)",
-            "fr": "Batterie (%)"
+            "fr": "Batterie (%)",
+            "de": "Akku (%)",
+            "es": "Batería (%)"
           }
         }
       ]
@@ -315,11 +393,15 @@
       "key": "get_player_status",
       "label": {
         "en": "Read a Yoto player",
-        "fr": "Lire un lecteur Yoto"
+        "fr": "Lire un lecteur Yoto",
+        "de": "Yoto-Player auslesen",
+        "es": "Leer un reproductor Yoto"
       },
       "description": {
         "en": "Reads the player now and hands its values to the next steps of the scene.",
-        "fr": "Lit le lecteur maintenant et passe ses valeurs aux étapes suivantes de la scène."
+        "fr": "Lit le lecteur maintenant et passe ses valeurs aux étapes suivantes de la scène.",
+        "de": "Liest den Player sofort aus und übergibt seine Werte an die nächsten Schritte der Szene.",
+        "es": "Lee el reproductor ahora y pasa sus valores a los siguientes pasos de la escena."
       },
       "timeout_seconds": 45,
       "fields": [
@@ -329,7 +411,9 @@
           "source": "devices",
           "label": {
             "en": "Player",
-            "fr": "Lecteur"
+            "fr": "Lecteur",
+            "de": "Player",
+            "es": "Reproductor"
           },
           "required": true
         }
@@ -340,7 +424,9 @@
           "type": "string",
           "label": {
             "en": "Player name",
-            "fr": "Nom du lecteur"
+            "fr": "Nom du lecteur",
+            "de": "Name des Players",
+            "es": "Nombre del reproductor"
           }
         },
         {
@@ -348,7 +434,9 @@
           "type": "boolean",
           "label": {
             "en": "Online",
-            "fr": "En ligne"
+            "fr": "En ligne",
+            "de": "Online",
+            "es": "En línea"
           }
         },
         {
@@ -356,7 +444,9 @@
           "type": "number",
           "label": {
             "en": "Battery (%)",
-            "fr": "Batterie (%)"
+            "fr": "Batterie (%)",
+            "de": "Akku (%)",
+            "es": "Batería (%)"
           }
         },
         {
@@ -364,7 +454,9 @@
           "type": "boolean",
           "label": {
             "en": "Plugged in",
-            "fr": "Sur secteur"
+            "fr": "Sur secteur",
+            "de": "Am Netz",
+            "es": "Conectado a la corriente"
           }
         },
         {
@@ -372,7 +464,9 @@
           "type": "number",
           "label": {
             "en": "Volume (%)",
-            "fr": "Volume (%)"
+            "fr": "Volume (%)",
+            "de": "Lautstärke (%)",
+            "es": "Volumen (%)"
           }
         },
         {
@@ -380,7 +474,9 @@
           "type": "boolean",
           "label": {
             "en": "Playing",
-            "fr": "En lecture"
+            "fr": "En lecture",
+            "de": "Wiedergabe läuft",
+            "es": "Reproduciendo"
           }
         },
         {
@@ -388,7 +484,9 @@
           "type": "string",
           "label": {
             "en": "Card playing",
-            "fr": "Carte en cours"
+            "fr": "Carte en cours",
+            "de": "Laufende Karte",
+            "es": "Tarjeta en curso"
           }
         },
         {
@@ -396,7 +494,9 @@
           "type": "number",
           "label": {
             "en": "Device temperature (°C)",
-            "fr": "Température de l'appareil (°C)"
+            "fr": "Température de l'appareil (°C)",
+            "de": "Gerätetemperatur (°C)",
+            "es": "Temperatura del dispositivo (°C)"
           }
         },
         {
@@ -404,7 +504,9 @@
           "type": "number",
           "label": {
             "en": "Wi-Fi signal (dBm)",
-            "fr": "Signal Wi-Fi (dBm)"
+            "fr": "Signal Wi-Fi (dBm)",
+            "de": "WLAN-Signal (dBm)",
+            "es": "Señal Wi-Fi (dBm)"
           }
         }
       ]
@@ -413,11 +515,15 @@
       "key": "refresh_players",
       "label": {
         "en": "Refresh all Yoto players",
-        "fr": "Rafraîchir tous les lecteurs Yoto"
+        "fr": "Rafraîchir tous les lecteurs Yoto",
+        "de": "Alle Yoto-Player aktualisieren",
+        "es": "Actualizar todos los reproductores Yoto"
       },
       "description": {
         "en": "Reads every player now, without waiting for the next refresh.",
-        "fr": "Lit tous les lecteurs maintenant, sans attendre le prochain rafraîchissement."
+        "fr": "Lit tous les lecteurs maintenant, sans attendre le prochain rafraîchissement.",
+        "de": "Liest alle Player sofort aus, ohne auf die nächste Aktualisierung zu warten.",
+        "es": "Lee todos los reproductores ahora, sin esperar a la próxima actualización."
       },
       "timeout_seconds": 90,
       "outputs": [
@@ -426,7 +532,9 @@
           "type": "number",
           "label": {
             "en": "Players refreshed",
-            "fr": "Lecteurs rafraîchis"
+            "fr": "Lecteurs rafraîchis",
+            "de": "Aktualisierte Player",
+            "es": "Reproductores actualizados"
           }
         }
       ]

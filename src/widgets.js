@@ -11,9 +11,9 @@
 //            and power state
 //
 // The content is declarative (the core renders it, theme and dark mode
-// included): texts are sent in English and French, the core picks the user's
-// language. The tiles and the chart are bound to the device features, so they
-// follow the published states in real time with no nudge.
+// included): texts are sent in English, French, German and Spanish, the core
+// picks the user's language. The tiles and the chart are bound to the device
+// features, so they follow the published states in real time with no nudge.
 // -----------------------------------------------------------------------------
 
 import { WIDGET_COLORS } from '@gladysassistant/integration-sdk';
@@ -25,6 +25,9 @@ export const WIDGET = {
   PLAYERS: 'players',
   PLAYER: 'player',
 };
+
+/** Languages every widget text is sent in; the core falls back to English. */
+export const LANGUAGES = ['en', 'fr', 'de', 'es'];
 
 /** Key of the "Refresh" button action, the same on both widgets. */
 export const WIDGET_ACTION_REFRESH = 'refresh';
@@ -38,7 +41,7 @@ const MAX_LISTED_PLAYERS = 8;
 
 const REFRESH_BUTTON = {
   type: 'button',
-  label: { en: 'Refresh', fr: 'Rafraîchir' },
+  label: { en: 'Refresh', fr: 'Rafraîchir', de: 'Aktualisieren', es: 'Actualizar' },
   icon: 'refresh-cw',
   style: 'secondary',
   action: { key: WIDGET_ACTION_REFRESH },
@@ -59,6 +62,8 @@ export function buildPlayersContent(players, snapshots) {
           text: {
             en: 'No Yoto player on this account yet.',
             fr: 'Aucun lecteur Yoto sur ce compte pour le moment.',
+            de: 'Noch kein Yoto-Player auf diesem Konto.',
+            es: 'Todavía no hay ningún reproductor Yoto en esta cuenta.',
           },
         },
         REFRESH_BUTTON,
@@ -98,6 +103,8 @@ export function buildPlayerContent(gladys, player, snapshot) {
           text: {
             en: 'This Yoto player is no longer on the account: pick another one in the widget settings.',
             fr: 'Ce lecteur Yoto n’est plus sur le compte : choisissez-en un autre dans les réglages du widget.',
+            de: 'Dieser Yoto-Player ist nicht mehr im Konto: Wählen Sie in den Widget-Einstellungen einen anderen.',
+            es: 'Este reproductor Yoto ya no está en la cuenta: elija otro en los ajustes del widget.',
           },
         },
       ],
@@ -110,25 +117,30 @@ export function buildPlayerContent(gladys, player, snapshot) {
     components: [
       {
         type: 'value',
-        label: { en: 'Battery', fr: 'Batterie' },
+        label: { en: 'Battery', fr: 'Batterie', de: 'Akku', es: 'Batería' },
         icon: 'battery',
         device_feature: ids.feature(FEATURE.BATTERY),
       },
       {
         type: 'value',
-        label: { en: 'Volume', fr: 'Volume' },
+        label: { en: 'Volume', fr: 'Volume', de: 'Lautstärke', es: 'Volumen' },
         icon: 'volume-2',
         device_feature: ids.feature(FEATURE.VOLUME),
       },
       {
         type: 'value',
-        label: { en: 'Temperature', fr: 'Température' },
+        label: { en: 'Temperature', fr: 'Température', de: 'Temperatur', es: 'Temperatura' },
         icon: 'thermometer',
         device_feature: ids.feature(FEATURE.TEMPERATURE),
       },
       {
         type: 'chart',
-        title: { en: 'Battery (24 h)', fr: 'Batterie (24 h)' },
+        title: {
+          en: 'Battery (24 h)',
+          fr: 'Batterie (24 h)',
+          de: 'Akku (24 h)',
+          es: 'Batería (24 h)',
+        },
         chart_type: 'line',
         device_features: [ids.feature(FEATURE.BATTERY)],
         interval: 'last-day',
@@ -144,8 +156,13 @@ function statusItems(snapshot) {
   if (!snapshot) {
     return [
       {
-        label: { en: 'State', fr: 'État' },
-        value: { en: 'Waiting for the first reading', fr: 'En attente de la première lecture' },
+        label: { en: 'State', fr: 'État', de: 'Status', es: 'Estado' },
+        value: {
+          en: 'Waiting for the first reading',
+          fr: 'En attente de la première lecture',
+          de: 'Warten auf die erste Messung',
+          es: 'Esperando la primera lectura',
+        },
         icon: 'clock',
         color: WIDGET_COLORS.NEUTRAL,
       },
@@ -153,26 +170,28 @@ function statusItems(snapshot) {
   }
   const items = [
     {
-      label: { en: 'Playing', fr: 'Lecture' },
+      label: { en: 'Playing', fr: 'Lecture', de: 'Wiedergabe', es: 'Reproducción' },
       value: playingLabel(snapshot, 40),
       icon: snapshot.playing ? 'play' : 'pause',
       color: snapshot.playing ? WIDGET_COLORS.PRIMARY : WIDGET_COLORS.NEUTRAL,
     },
     {
-      label: { en: 'Power', fr: 'Alimentation' },
+      label: { en: 'Power', fr: 'Alimentation', de: 'Stromversorgung', es: 'Alimentación' },
       value:
         snapshot.charging === null
-          ? { en: 'Unknown', fr: 'Inconnue' }
+          ? { en: 'Unknown', fr: 'Inconnue', de: 'Unbekannt', es: 'Desconocida' }
           : snapshot.charging
-            ? { en: 'Plugged in', fr: 'Sur secteur' }
-            : { en: 'On battery', fr: 'Sur batterie' },
+            ? { en: 'Plugged in', fr: 'Sur secteur', de: 'Am Netz', es: 'Conectado a la corriente' }
+            : { en: 'On battery', fr: 'Sur batterie', de: 'Akkubetrieb', es: 'Con batería' },
       icon: snapshot.charging ? 'battery-charging' : 'battery',
       color: snapshot.charging ? WIDGET_COLORS.SUCCESS : batteryColor(snapshot.batteryLevel),
     },
     {
-      label: { en: 'Connection', fr: 'Connexion' },
+      label: { en: 'Connection', fr: 'Connexion', de: 'Verbindung', es: 'Conexión' },
       value:
-        snapshot.online === false ? { en: 'Offline', fr: 'Hors ligne' } : onlineLabel(snapshot),
+        snapshot.online === false
+          ? { en: 'Offline', fr: 'Hors ligne', de: 'Offline', es: 'Sin conexión' }
+          : onlineLabel(snapshot),
       icon: snapshot.online === false ? 'wifi-off' : 'wifi',
       color: snapshot.online === false ? WIDGET_COLORS.DANGER : WIDGET_COLORS.SUCCESS,
     },
@@ -183,26 +202,38 @@ function statusItems(snapshot) {
 /** "Online · -58 dBm", or plain "Online" when the signal is unknown. */
 function onlineLabel(snapshot) {
   if (snapshot.wifiStrength === null) {
-    return { en: 'Online', fr: 'En ligne' };
+    return { en: 'Online', fr: 'En ligne', de: 'Online', es: 'En línea' };
   }
   return {
     en: `Online · ${snapshot.wifiStrength} dBm`,
     fr: `En ligne · ${snapshot.wifiStrength} dBm`,
+    de: `Online · ${snapshot.wifiStrength} dBm`,
+    es: `En línea · ${snapshot.wifiStrength} dBm`,
   };
 }
 
 /** What the player is playing, for a subtitle or a status row. */
 function playingLabel(snapshot, maxLength) {
   if (!snapshot) {
-    return { en: 'Not read yet', fr: 'Pas encore lu' };
+    return {
+      en: 'Not read yet',
+      fr: 'Pas encore lu',
+      de: 'Noch nicht gelesen',
+      es: 'Aún no leído',
+    };
   }
   if (snapshot.online === false) {
-    return { en: 'Offline', fr: 'Hors ligne' };
+    return { en: 'Offline', fr: 'Hors ligne', de: 'Offline', es: 'Sin conexión' };
   }
   if (snapshot.playing) {
     return truncate(snapshot.cardTitle ?? snapshot.cardId ?? '?', maxLength);
   }
-  return { en: 'Nothing playing', fr: 'Rien en lecture' };
+  return {
+    en: 'Nothing playing',
+    fr: 'Rien en lecture',
+    de: 'Keine Wiedergabe',
+    es: 'Nada en reproducción',
+  };
 }
 
 /** Battery badge of a list row: the level, colored by how urgent it is. */
@@ -235,35 +266,59 @@ function describe(snapshot) {
   if (!snapshot) {
     return undefined;
   }
-  const lines = { en: [], fr: [] };
-  const add = (en, fr) => {
-    lines.en.push(en);
-    lines.fr.push(fr);
+  const lines = Object.fromEntries(LANGUAGES.map((language) => [language, []]));
+  const add = (text) => {
+    for (const language of LANGUAGES) {
+      lines[language].push(text[language]);
+    }
   };
-  if (snapshot.volume !== null)
-    add(`Volume: ${snapshot.volume} %`, `Volume : ${snapshot.volume} %`);
+  if (snapshot.volume !== null) {
+    const volume = snapshot.volume;
+    add({
+      en: `Volume: ${volume} %`,
+      fr: `Volume : ${volume} %`,
+      de: `Lautstärke: ${volume} %`,
+      es: `Volumen: ${volume} %`,
+    });
+  }
   if (snapshot.charging !== null) {
     add(
-      snapshot.charging ? 'Plugged in' : 'On battery',
-      snapshot.charging ? 'Sur secteur' : 'Sur batterie',
+      snapshot.charging
+        ? { en: 'Plugged in', fr: 'Sur secteur', de: 'Am Netz', es: 'Conectado a la corriente' }
+        : { en: 'On battery', fr: 'Sur batterie', de: 'Akkubetrieb', es: 'Con batería' },
     );
   }
   if (snapshot.deviceTemperature !== null) {
-    add(
-      `Temperature: ${snapshot.deviceTemperature} °C`,
-      `Température : ${snapshot.deviceTemperature} °C`,
-    );
+    const temperature = snapshot.deviceTemperature;
+    add({
+      en: `Temperature: ${temperature} °C`,
+      fr: `Température : ${temperature} °C`,
+      de: `Temperatur: ${temperature} °C`,
+      es: `Temperatura: ${temperature} °C`,
+    });
   }
   if (snapshot.ambientLight !== null) {
-    add(`Ambient light: ${snapshot.ambientLight} lx`, `Luminosité : ${snapshot.ambientLight} lx`);
+    const light = snapshot.ambientLight;
+    add({
+      en: `Ambient light: ${light} lx`,
+      fr: `Luminosité : ${light} lx`,
+      de: `Umgebungslicht: ${light} lx`,
+      es: `Luz ambiente: ${light} lx`,
+    });
   }
   if (snapshot.wifiStrength !== null) {
-    add(`Wi-Fi: ${snapshot.wifiStrength} dBm`, `Wi-Fi : ${snapshot.wifiStrength} dBm`);
+    const wifi = snapshot.wifiStrength;
+    add({
+      en: `Wi-Fi: ${wifi} dBm`,
+      fr: `Wi-Fi : ${wifi} dBm`,
+      de: `WLAN: ${wifi} dBm`,
+      es: `Wi-Fi: ${wifi} dBm`,
+    });
   }
   if (lines.en.length === 0) {
     return undefined;
   }
-  return { en: lines.en.join('\n'), fr: lines.fr.join('\n') };
+  return Object.fromEntries(LANGUAGES.map((language) => [language, lines[language].join('\n')]));
 }
 
 function truncate(text, maxLength) {

@@ -136,3 +136,51 @@ test('get_player_status declares exactly the outputs the handler returns', () =>
   const returned = Object.keys(playerStatusOutputs({ name: 'x' }));
   assert.deepEqual(action.outputs.map((output) => output.key).sort(), returned.sort());
 });
+
+// Gladys speaks English, French, German and Spanish: every text a user reads
+// carries the four, and the store limits apply to each language.
+const LANGUAGES = ['en', 'fr', 'de', 'es'];
+
+/** Every multi-language object of the manifest, with the path that leads to it. */
+function multiLanguageTexts(node, path = '') {
+  if (Array.isArray(node)) {
+    return node.flatMap((child, index) => multiLanguageTexts(child, `${path}[${index}]`));
+  }
+  if (node && typeof node === 'object') {
+    if (typeof node.en === 'string') {
+      return [{ path, text: node }];
+    }
+    return Object.entries(node).flatMap(([key, child]) =>
+      multiLanguageTexts(child, path ? `${path}.${key}` : key),
+    );
+  }
+  return [];
+}
+
+test('every manifest text is written in English, French, German and Spanish', () => {
+  const texts = multiLanguageTexts(manifest);
+  assert.ok(texts.length > 50, 'the walk must find the manifest texts');
+  for (const { path, text } of texts) {
+    assert.deepEqual(Object.keys(text), LANGUAGES, `${path} must carry exactly ${LANGUAGES}`);
+    for (const language of LANGUAGES) {
+      assert.ok(text[language].trim().length > 0, `${path}.${language} is empty`);
+    }
+  }
+});
+
+test('the store length limits hold in every language', () => {
+  const within = (text, min, max, what) => {
+    for (const language of LANGUAGES) {
+      const { length } = text[language];
+      assert.ok(length >= min && length <= max, `${what}.${language}: ${length} characters`);
+    }
+  };
+  within(manifest.description, 10, 100, 'description');
+  for (const field of manifest.config_schema.filter((entry) => entry.type === 'section')) {
+    within(field.description, 1, 1000, `${field.key}.description`);
+  }
+  for (const widget of manifest.widgets) {
+    within(widget.label, 3, 30, `${widget.key}.label`);
+    within(widget.description, 1, 100, `${widget.key}.description`);
+  }
+});
