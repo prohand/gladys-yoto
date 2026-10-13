@@ -127,7 +127,7 @@ async function startDeviceLink() {
         : {
             en: 'Yoto pairing failed, check the integration logs.',
             fr: 'Liaison Yoto échouée, consultez les logs.',
-            de: 'Yoto-Verknüpfung fehlgeschlagen, prüfen Sie die Protokolle der Integration.',
+            de: 'Yoto-Verknüpfung fehlgeschlagen, prüfe die Protokolle der Integration.',
             es: 'Falló la vinculación con Yoto, consulte los registros de la integración.',
           },
     );
@@ -381,7 +381,7 @@ gladys.onConfigUpdated(async (newConfig) => {
     await reportDisconnected({
       en: 'Client ID changed, please connect your Yoto account again.',
       fr: 'Client ID modifié, reconnectez votre compte Yoto.',
-      de: 'Client ID geändert, bitte verbinden Sie Ihr Yoto-Konto erneut.',
+      de: 'Client ID geändert, bitte verbinde dein Yoto-Konto erneut.',
       es: 'Client ID modificado, vuelva a conectar su cuenta Yoto.',
     });
     return;
@@ -433,7 +433,7 @@ async function initializeAccount() {
     await reportDisconnected({
       en: 'Fill in your Yoto Client ID, then connect your account.',
       fr: 'Renseignez votre Client ID Yoto, puis connectez votre compte.',
-      de: 'Geben Sie Ihre Yoto Client ID ein und verbinden Sie dann Ihr Konto.',
+      de: 'Gib deine Yoto Client ID ein und verbinde dann dein Konto.',
       es: 'Introduzca su Client ID de Yoto y después conecte su cuenta.',
     });
     return true;
@@ -442,7 +442,7 @@ async function initializeAccount() {
     await reportDisconnected({
       en: 'No Yoto account linked yet: click Connect.',
       fr: 'Aucun compte Yoto lié : cliquez sur Connecter.',
-      de: 'Noch kein Yoto-Konto verknüpft: Klicken Sie auf Verbinden.',
+      de: 'Noch kein Yoto-Konto verknüpft: Klicke auf Verbinden.',
       es: 'Todavía no hay ninguna cuenta Yoto vinculada: pulse Conectar.',
     });
     return true;
@@ -477,7 +477,7 @@ async function handleYotoError(err, context) {
     await reportDisconnected({
       en: 'The Yoto link expired, please connect your account again.',
       fr: 'La liaison Yoto a expiré, reconnectez votre compte.',
-      de: 'Die Yoto-Verknüpfung ist abgelaufen, bitte verbinden Sie Ihr Konto erneut.',
+      de: 'Die Yoto-Verknüpfung ist abgelaufen, bitte verbinde dein Konto erneut.',
       es: 'La vinculación con Yoto ha caducado, vuelva a conectar su cuenta.',
     });
     return;
@@ -485,7 +485,7 @@ async function handleYotoError(err, context) {
   await reportDisconnected({
     en: 'Cannot reach the Yoto service, check the integration logs.',
     fr: 'Service Yoto injoignable, consultez les logs de l’intégration.',
-    de: 'Yoto-Dienst nicht erreichbar, prüfen Sie die Protokolle der Integration.',
+    de: 'Yoto-Dienst nicht erreichbar, prüfe die Protokolle der Integration.',
     es: 'No se puede acceder al servicio Yoto, consulte los registros de la integración.',
   });
 }

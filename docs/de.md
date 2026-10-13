@@ -1,10 +1,10 @@
 # Yoto-Integration
 
-Diese Integration bringt den Zustand Ihrer **Yoto**-Player in Gladys:
+Diese Integration bringt den Zustand deiner **Yoto**-Player in Gladys:
 Akku, Ladezustand, Lautstärke, laufende Karte, Umgebungslicht,
 Gerätetemperatur, WLAN-Signal und Online-Status.
 
-## Was Sie bekommen
+## Was du bekommst
 
 Ein Gladys-Gerät pro Yoto-Player des Kontos, mit neun schreibgeschützten Sensoren.
 Die öffentliche Yoto-API liefert die Telemetrie der Player, aber keine
@@ -21,10 +21,10 @@ Gladys Assistant **5.1** oder neuer.
 
 Eine kostenlose App im Yoto-Entwicklerportal:
 
-1. Öffnen Sie <https://dashboard.yoto.dev/> und erstellen Sie eine App als **öffentlichen Client** (_public client_).
-2. Aktivieren Sie die Scopes `family:devices:view`, `family:devices:control`,
+1. Öffne <https://dashboard.yoto.dev/> und erstelle eine App als **öffentlichen Client** (_public client_).
+2. Aktiviere die Scopes `family:devices:view`, `family:devices:control`,
    `family:library:view` und `offline_access`.
-3. Kopieren Sie die **Client ID**.
+3. Kopiere die **Client ID**.
 
 Yoto hat den _Device-Code_-Flow abgekündigt: Die Integration verwendet den
 Browser-Flow, den Yoto heute empfiehlt (Authorization Code + PKCE). Die App
@@ -33,13 +33,13 @@ siehe unten.
 
 ## Konfiguration
 
-1. Öffnen Sie den Tab **Konfiguration** der Integration.
-2. Fügen Sie die **Yoto Client ID** ein und speichern Sie.
-3. Klicken Sie ein erstes Mal auf **Verbinden** und öffnen Sie dann die Protokolle
+1. Öffne den Tab **Konfiguration** der Integration.
+2. Füge die **Yoto Client ID** ein und speichere.
+3. Klicke ein erstes Mal auf **Verbinden** und öffne dann die Protokolle
    der Integration: Die Zeile
    `Yoto sign-in started, callback URL to allow on the Yoto app: …` nennt die
-   genaue URL, die Sie in die **Allowed callback URLs** Ihrer Yoto-App eintragen.
-4. Klicken Sie erneut auf **Verbinden**: Melden Sie sich auf der Yoto-Seite an,
+   genaue URL, die du in die **Allowed callback URLs** deiner Yoto-App einträgst.
+4. Klicke erneut auf **Verbinden**: Melde dich auf der Yoto-Seite an,
    Yoto leitet zurück zu Gladys und das Verbindungsabzeichen wird grün.
 5. Die Player erscheinen im Tab **Entdecken** und können hinzugefügt werden.
 
@@ -47,7 +47,7 @@ Einstellungen:
 
 - **Aktualisierungsintervall** (`poll_frequency`) — 30 bis 3600 Sekunden,
   standardmäßig 120. So oft wird jeder Player ausgelesen. Die Yoto-API ist eine
-  Cloud-API: Bleiben Sie über 60 Sekunden, sofern Sie nicht wirklich mehr brauchen.
+  Cloud-API: Bleib über 60 Sekunden, sofern du nicht wirklich mehr brauchst.
   Gladys plant in festen Takten (höchstens 60 Sekunden): Ein Wert zwischen 30 und
   59 Sekunden läuft über den 30-Sekunden-Takt, alles über 60 Sekunden wird von der
   Integration selbst eingehalten. Eine Änderung gilt sofort, ohne dass ein Gerät
@@ -55,7 +55,7 @@ Einstellungen:
 - **Player vor dem Auslesen aktualisieren lassen** — sendet vor jeder Abfrage eine
   Statusanfrage an den Player, damit aktuelle Werte gelesen werden statt der
   zuletzt gemeldeten (die Integration wartet vor dem Auslesen eine Sekunde auf die
-  Antwort des Players). Schalten Sie die Option aus, wenn Ihrer Yoto-App der Scope
+  Antwort des Players). Schalte die Option aus, wenn deiner Yoto-App der Scope
   `family:devices:control` fehlt.
 
 Die Tokens werden von Gladys intern aufbewahrt (nie in der Oberfläche angezeigt):
@@ -70,11 +70,11 @@ Die Verknüpfung übersteht einen Neustart oder ein Image-Update.
 
 ## Dashboard-Widgets
 
-Erfordert Gladys 5.1 oder neuer. Fügen Sie sie über **Dashboard bearbeiten** hinzu:
+Erfordert Gladys 5.1 oder neuer. Füge sie unter **Dashboard → Bearbeiten → Neues Widget** hinzu:
 
 - **Alle Yoto-Player** — alle Player des Kontos in einer Karte: die laufende Karte,
   der Akkustand (grün, orange unter 50 %, rot unter 20 %, ein ⚡ am Netz) und ob
-  der Player online ist. Tippen Sie auf eine Zeile für die Details (Lautstärke,
+  der Player online ist. Tippe auf eine Zeile für die Details (Lautstärke,
   Temperatur, Licht, WLAN).
 - **Yoto-Player** — ein Player, in den Widget-Einstellungen ausgewählt: live
   aktualisierte Kacheln für Akku, Lautstärke und Temperatur, die Akkukurve der
@@ -121,42 +121,42 @@ einen privaten Yoto-Kanal).
 
 - **Batteriestandswarnung („Battery below 10 % (current: 1 %)“), obwohl der
   Player geladen ist** — behoben nach 2.0.0: Die Funktion „Charging“ lag in der
-  Akku-Kategorie, und die wöchentliche Prüfung von Gladys las sie als Prozentwert
-  (1 = am Netz). Öffnen Sie nach dem Update den Tab **Entdecken** und aktualisieren
-  Sie den Player (oder löschen Sie ihn und fügen Sie ihn erneut hinzu), damit die
-  Funktion in ihre neue Kategorie wechselt.
-- **„Noch kein Yoto-Konto verknüpft: Klicken Sie auf Verbinden.“** — die Client ID
+  Akku-Kategorie, und die wöchentliche Prüfung von Gladys las sie als
+  Prozentwert (1 = am Netz). Öffne nach dem Update den Tab **Entdecken** und
+  klicke beim Player auf **Aktualisieren** (oder lösche ihn und füge ihn erneut
+  hinzu), damit die Funktion in ihre neue Kategorie wechselt.
+- **„Noch kein Yoto-Konto verknüpft: Klicke auf Verbinden.“** — die Client ID
   ist gesetzt, aber das Konto wurde nie verknüpft, oder die Verknüpfung ist
   abgelaufen.
-- **„Die Yoto-Verknüpfung ist abgelaufen, bitte verbinden Sie Ihr Konto erneut.“** —
+- **„Die Yoto-Verknüpfung ist abgelaufen, bitte verbinde dein Konto erneut.“** —
   das Token wurde widerrufen (Passwortänderung, App auf Yoto-Seite gelöscht).
-  Klicken Sie erneut auf **Verbinden**. Ein Zugriffstoken, das Yoto vorzeitig
+  Klicke erneut auf **Verbinden**. Ein Zugriffstoken, das Yoto vorzeitig
   ablehnt, wird zuerst einmal automatisch erneuert: Diese Meldung erscheint nur,
   wenn Yoto auch die Erneuerung ablehnt.
-- **„Yoto-Dienst nicht erreichbar, prüfen Sie die Protokolle der Integration.“** —
+- **„Yoto-Dienst nicht erreichbar, prüfe die Protokolle der Integration.“** —
   ein Auslesen ist fehlgeschlagen (Yoto ausgefallen, Netzwerk unterbrochen). Nichts
   zu tun: Das Abzeichen wird beim nächsten erfolgreichen Auslesen wieder grün.
   Startet der Container, bevor das Netzwerk bereit ist, wird das Yoto-Konto nach
   1 Minute, nach 5 Minuten und dann alle 15 Minuten erneut gelesen, bis die Player
   im Tab **Entdecken** erscheinen.
 - **Yoto antwortet „Callback URL mismatch“** — die auf dieser Yoto-Seite angezeigte
-  URL ist der Gladys-Callback: Tragen Sie sie in die **Allowed callback URLs** Ihrer
-  Yoto-App ein und klicken Sie dann erneut auf **Verbinden**.
+  URL ist der Gladys-Callback: Trage sie in die **Allowed callback URLs** deiner
+  Yoto-App ein und klicke dann erneut auf **Verbinden**.
 - **„Die Yoto-Anmeldung konnte nicht gestartet werden: …“** — der Grund steht in der
   Meldung und in den Protokollen. `unauthorized_client` am Device-Code-Endpunkt
   bedeutet, dass die Yoto-App keinen Device-Code-Grant hat: Yoto hat ihn
-  abgekündigt, aktualisieren Sie Gladys, damit der Browser-Flow verwendet wird.
+  abgekündigt, aktualisiere Gladys, damit der Browser-Flow verwendet wird.
 - **„No Yoto sign-in is in progress“** — die Integration wurde zwischen dem Klick auf
-  **Verbinden** und der Rückkehr von Yoto neu gestartet; klicken Sie erneut auf
+  **Verbinden** und der Rückkehr von Yoto neu gestartet; klicke erneut auf
   **Verbinden**.
 - **Veraltete oder fehlende Werte** — ein ausgeschalteter oder offline befindlicher
   Player meldet nichts: Die Integration behält den letzten bekannten Zustand, und
   der Sensor „Online“ fällt auf 0. Sensoren, die ein Modell nicht hat (zum Beispiel
   die Temperatur bei einem Yoto Mini), werden einfach nicht veröffentlicht.
-- **401/403-Fehler in den Protokollen** — die Scopes Ihrer Yoto-App sind
-  unvollständig. Prüfen Sie sie im Entwicklerportal und verknüpfen Sie das Konto
+- **401/403-Fehler in den Protokollen** — die Scopes deiner Yoto-App sind
+  unvollständig. Prüfe sie im Entwicklerportal und verknüpfe das Konto
   dann erneut.
 
-Die Integration protokolliert alles, was sie tut: Lesen Sie die Protokolle in der
+Die Integration protokolliert alles, was sie tut: Lies die Protokolle in der
 Gladys-Oberfläche (oder mit `docker logs` auf dem Host) mit `LOG_LEVEL=debug` für
 alle Details.

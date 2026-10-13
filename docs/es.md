@@ -69,7 +69,7 @@ vinculación sobrevive a un reinicio o a una actualización de la imagen.
 
 ## Widgets del panel
 
-Requiere Gladys 5.1 o posterior. Añádalos desde **Editar panel**:
+Requiere Gladys 5.1 o posterior. Añádalos desde **Panel → Editar → Nuevo widget**:
 
 - **Reproductores Yoto**: todos los reproductores de la cuenta en una tarjeta: la
   tarjeta en curso, el nivel de batería (verde, naranja por debajo del 50 %, rojo
@@ -121,10 +121,11 @@ pública de Yoto no ofrece estos comandos (pasan por un canal privado de Yoto).
 
 - **Alerta de nivel de batería («Battery below 10 % (current: 1 %)») con el
   reproductor cargado**: corregido después de la 2.0.0: la funcionalidad
-  «Charging» estaba en la categoría de batería, y la comprobación semanal de Gladys
-  la leía como un porcentaje (1 = conectado a la corriente). Tras la actualización,
-  abra la pestaña **Descubrir** y actualice el reproductor (o elimínelo y vuelva a
-  añadirlo) para que la funcionalidad pase a su nueva categoría.
+  «Charging» estaba en la categoría de batería, y la comprobación semanal de
+  Gladys la leía como un porcentaje (1 = conectado a la corriente). Tras la
+  actualización, abra la pestaña **Descubrir** y pulse **Actualizar** en el
+  reproductor (o elimínelo y vuelva a añadirlo) para que la funcionalidad pase a
+  su nueva categoría.
 - **«Todavía no hay ninguna cuenta Yoto vinculada: pulse Conectar.»**: el Client ID
   está configurado, pero la cuenta nunca se vinculó, o la vinculación ha caducado.
 - **«La vinculación con Yoto ha caducado, vuelva a conectar su cuenta.»**: el token

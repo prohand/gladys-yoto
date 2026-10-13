@@ -103,7 +103,7 @@ export function buildPlayerContent(gladys, player, snapshot) {
           text: {
             en: 'This Yoto player is no longer on the account: pick another one in the widget settings.',
             fr: 'Ce lecteur Yoto n’est plus sur le compte : choisissez-en un autre dans les réglages du widget.',
-            de: 'Dieser Yoto-Player ist nicht mehr im Konto: Wählen Sie in den Widget-Einstellungen einen anderen.',
+            de: 'Dieser Yoto-Player ist nicht mehr im Konto: Wähle in den Widget-Einstellungen einen anderen.',
             es: 'Este reproductor Yoto ya no está en la cuenta: elija otro en los ajustes del widget.',
           },
         },
