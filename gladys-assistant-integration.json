@@ -8,8 +8,8 @@
     "de": "Überwache deine Yoto-Player: Akku, Ladung, Lautstärke, laufende Karte, Helligkeit und WLAN.",
     "es": "Supervise sus reproductores Yoto: batería, carga, volumen, tarjeta en curso, luz y señal Wi-Fi."
   },
-  "version": "2.2.2",
-  "docker_image": "ghcr.io/prohand/gladys-yoto:2.2.2",
+  "version": "2.3.0",
+  "docker_image": "ghcr.io/prohand/gladys-yoto:2.3.0",
   "gladys_version": ">=5.1.0",
   "cover_image": "https://raw.githubusercontent.com/prohand/gladys-yoto/main/cover.png",
   "categories": [
