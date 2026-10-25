@@ -6,7 +6,8 @@ Gerätetemperatur, WLAN-Signal und Online-Status.
 
 ## Was du bekommst
 
-Ein Gladys-Gerät pro Yoto-Player des Kontos, mit neun schreibgeschützten Sensoren.
+Ein Gladys-Gerät pro Yoto-Player des Kontos, mit neun schreibgeschützten Sensoren
+und dem schreibgeschützten „Jetzt läuft“ eines Musik-Players (siehe unten).
 Die öffentliche Yoto-API liefert die Telemetrie der Player, aber keine
 Wiedergabebefehle (Wiedergabe, Pause, Lautstärke): Aus Gladys lässt sich also nichts
 steuern — die Funktionen sind als schreibgeschützt deklariert, statt einen Knopf
@@ -17,7 +18,7 @@ Szenen-Aktionen (siehe unten).
 
 ## Voraussetzungen
 
-Gladys Assistant **5.1** oder neuer.
+Gladys Assistant **5.3** oder neuer (seit Version 2.4 der Integration).
 
 Eine kostenlose App im Yoto-Entwicklerportal:
 
@@ -61,6 +62,26 @@ Einstellungen:
 Die Tokens werden von Gladys intern aufbewahrt (nie in der Oberfläche angezeigt):
 Die Verknüpfung übersteht einen Neustart oder ein Image-Update.
 
+## Jetzt läuft (Musik-Player)
+
+Jeder Yoto-Player ist in Gladys auch ein **Musik-Player**: Die Karte, die er
+spielt, ist sein „Jetzt läuft“, das die Musik-Box von Gladys neben den
+Funktionen „Playing“ und „Volume“ anzeigt:
+
+- **Title** — der Titel der Karte (ihre ID, wenn Yoto keinen liefert);
+- **Author** — der Autor, den die Karte nennt, sonst leer;
+- **Cover** — das Cover der Karte. Gladys fragt das Bild bei der Integration
+  an: Dein Browser lädt es nie direkt von Yoto.
+
+Sie werden geleert, wenn die Karte entfernt wird. Yoto teilt nur die Karte,
+weder das laufende Kapitel oder den Titel noch die Wiedergabeposition: nichts
+davon wird angezeigt. Der Player bleibt schreibgeschützt: Pause, Fortsetzen und
+Lautstärke laufen über einen privaten Yoto-Kanal, den die öffentliche API nicht
+öffnet, daher zeigt Gladys keine Wiedergabesteuerung.
+
+Ein vor Version 2.4 hinzugefügter Player: Öffne den Tab **Entdecken** und klicke
+bei ihm auf **Aktualisieren**, um die drei neuen Funktionen zu erhalten.
+
 ## Aktionen
 
 - **Verbindung testen** — fragt das Yoto-Konto ab und zeigt an, wie viele Player
@@ -70,7 +91,7 @@ Die Verknüpfung übersteht einen Neustart oder ein Image-Update.
 
 ## Dashboard-Widgets
 
-Erfordert Gladys 5.1 oder neuer. Füge sie unter **Dashboard → Bearbeiten → Neues Widget** hinzu:
+Füge sie unter **Dashboard → Bearbeiten → Neues Widget** hinzu:
 
 - **Alle Yoto-Player** — alle Player des Kontos in einer Karte: die laufende Karte,
   der Akkustand (grün, orange unter 50 %, rot unter 20 %, ein ⚡ am Netz) und ob
@@ -85,8 +106,6 @@ Widgets werden aus der letzten Messung gezeichnet: Das Öffnen eines Dashboards
 fragt Yoto nie ab.
 
 ## Szenen
-
-Erfordert Gladys 5.1 oder neuer.
 
 Auslöser (der Filter **Player** ist optional: leer bedeutet jeder Player):
 
@@ -118,6 +137,10 @@ möglich: Die öffentliche Yoto-API bietet diese Befehle nicht an (sie laufen ü
 einen privaten Yoto-Kanal).
 
 ## Fehlerbehebung
+
+- **Kein Cover in der Musik-Box** — die Karte hat bei Yoto kein Cover, oder das
+  Bild ist größer, als Gladys annimmt (300 KB): Titel und Autor werden trotzdem
+  angezeigt.
 
 - **Batteriestandswarnung („Battery below 10 % (current: 1 %)“), obwohl der
   Player geladen ist** — behoben nach 2.0.0: Die Funktion „Charging“ lag in der

@@ -1,12 +1,17 @@
 // -----------------------------------------------------------------------------
 // Yoto REST client (https://api.yotoplay.com).
 //
-// Only three calls are needed to supervise players:
+// Four calls are enough to supervise players:
 //   GET  /device-v2/devices/mine       -> the players of the family
 //   GET  /device-v2/{deviceId}/config  -> settings + the `device.status` block
 //                                         (the last telemetry the player
 //                                         reported: battery, volume, card…)
 //   POST /device-v2/{deviceId}/command/status -> ask the player to report NOW
+//   GET  /card/{cardId}                -> title, author and cover of a card
+//
+// The playback commands (pause, resume, stop, volume) and the track-level
+// "now playing" (track title, position, length) only travel over the Yoto
+// MQTT channel, not over this REST API: the players stay read-only here.
 //
 // Why `/config` and not the documented `/device-v2/{id}/status`: that one is
 // deprecated by Yoto and needs the extra `family:device-status:view` scope,
@@ -78,13 +83,24 @@ export class YotoApi {
   }
 
   /**
-   * Title of a card, to show what is playing instead of a raw id. Needs the
-   * `family:library:view` scope; the caller degrades to the id when it throws.
+   * What a card is, to show what is playing instead of a raw id: its title,
+   * its author and the URL of its cover (the "now playing" of the player).
+   * Needs the `family:library:view` scope; the caller degrades to the id when
+   * it throws. Every field but the title is optional on Yoto's side: a field
+   * the card does not carry is `null`, never guessed.
+   * @returns {Promise<{ title: string|null, author: string|null, coverUrl: string|null }>}
    */
-  async getCardTitle(cardId) {
+  async getCard(cardId) {
     const payload = await this.#request('GET', `/card/${encodeURIComponent(cardId)}`);
     const card = payload.card ?? payload;
-    return card.title ?? card.metadata?.title ?? null;
+    const metadata = card.metadata ?? {};
+    return {
+      title: nonEmptyString(card.title) ?? nonEmptyString(metadata.title),
+      author: nonEmptyString(metadata.author),
+      // `imageL` is the large cover the Yoto app shows; only an https URL is
+      // kept, the SDK fetches it when Gladys asks for the artwork.
+      coverUrl: httpsUrl(metadata.cover?.imageL),
+    };
   }
 
   /**
@@ -162,4 +178,13 @@ export class YotoApi {
 
 function defaultSleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function nonEmptyString(value) {
+  return typeof value === 'string' && value.trim() !== '' ? value.trim() : null;
+}
+
+function httpsUrl(value) {
+  const url = nonEmptyString(value);
+  return url !== null && url.startsWith('https://') ? url : null;
 }

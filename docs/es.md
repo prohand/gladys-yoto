@@ -7,7 +7,7 @@ dispositivo, señal Wi-Fi y estado de conexión.
 ## Qué obtiene
 
 Un dispositivo de Gladys por cada reproductor Yoto de la cuenta, con nueve sensores
-de solo lectura. La API pública de Yoto informa de la telemetría de los reproductores,
+de solo lectura y la «reproducción en curso» de un reproductor de música (ver más abajo). La API pública de Yoto informa de la telemetría de los reproductores,
 pero no de los comandos de reproducción (reproducir, pausa, volumen), así que nada se
 puede controlar desde Gladys: las funcionalidades se declaran de solo lectura en lugar
 de mostrar un botón que no haría nada.
@@ -17,7 +17,7 @@ acciones de escena (ver más abajo).
 
 ## Requisitos
 
-Gladys Assistant **5.1** o posterior.
+Gladys Assistant **5.3** o posterior (desde la versión 2.4 de la integración).
 
 Una aplicación gratuita en el portal de desarrolladores de Yoto:
 
@@ -60,6 +60,27 @@ Ajustes:
 Gladys guarda los tokens internamente (nunca se muestran en la interfaz): la
 vinculación sobrevive a un reinicio o a una actualización de la imagen.
 
+## Reproducción en curso (reproductor de música)
+
+Cada reproductor Yoto es también un **reproductor de música** en Gladys: la
+tarjeta que reproduce es su «reproducción en curso», que la caja de música de
+Gladys muestra junto a las funcionalidades «Playing» y «Volume»:
+
+- **Title**: el título de la tarjeta (su identificador cuando Yoto no lo da);
+- **Author**: el autor que indica la tarjeta, vacío si no;
+- **Cover**: la portada de la tarjeta. Gladys pide la imagen a la
+  integración: su navegador nunca la carga desde Yoto.
+
+Se vacían cuando se retira la tarjeta. Yoto solo comparte la tarjeta, ni el
+capítulo o la pista en curso ni la posición de reproducción: no se muestra nada
+de eso. El reproductor sigue siendo de solo lectura: pausa, reanudar y volumen
+pasan por un canal privado de Yoto que la API pública no abre, así que Gladys no
+muestra ningún control de reproducción.
+
+Un reproductor añadido antes de la versión 2.4: abra la pestaña **Descubrir** y
+haga clic en **Actualizar** en ese reproductor para obtener las tres nuevas
+funcionalidades.
+
 ## Acciones
 
 - **Probar la conexión**: consulta la cuenta Yoto y muestra cuántos reproductores
@@ -69,7 +90,7 @@ vinculación sobrevive a un reinicio o a una actualización de la imagen.
 
 ## Widgets del panel
 
-Requiere Gladys 5.1 o posterior. Añádalos desde **Panel → Editar → Nuevo widget**:
+Añádalos desde **Panel → Editar → Nuevo widget**:
 
 - **Reproductores Yoto**: todos los reproductores de la cuenta en una tarjeta: la
   tarjeta en curso, el nivel de batería (verde, naranja por debajo del 50 %, rojo
@@ -84,8 +105,6 @@ widgets se dibujan a partir de la última lectura: abrir un panel nunca consulta
 Yoto.
 
 ## Escenas
-
-Requiere Gladys 5.1 o posterior.
 
 Disparadores (el filtro **Reproductor** es opcional: vacío significa cualquier
 reproductor):
@@ -118,6 +137,10 @@ No es posible iniciar una tarjeta, pausar o cambiar el volumen desde Gladys: la 
 pública de Yoto no ofrece estos comandos (pasan por un canal privado de Yoto).
 
 ## Solución de problemas
+
+- **Sin portada en la caja de música**: la tarjeta no tiene portada en Yoto, o la
+  imagen supera lo que Gladys acepta (300 KB): el título y el autor se siguen
+  mostrando.
 
 - **Alerta de nivel de batería («Battery below 10 % (current: 1 %)») con el
   reproductor cargado**: corregido después de la 2.0.0: la funcionalidad

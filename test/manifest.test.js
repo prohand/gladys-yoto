@@ -16,6 +16,46 @@ const manifest = JSON.parse(
 );
 const indexSource = await readFile(new URL('../index.js', import.meta.url), 'utf8');
 
+/** The minimum of the `gladys_version` range, as [major, minor, patch] numbers. */
+function minimumGladysVersion() {
+  const match = manifest.gladys_version.match(/>=\s*(\d+)\.(\d+)\.(\d+)/);
+  assert.ok(match, 'gladys_version must declare a minimum version');
+  return match.slice(1).map(Number);
+}
+
+/** True when the manifest floor is at least `major.minor.patch` (compared as numbers). */
+function floorAtLeast(major, minor, patch = 0) {
+  const floor = minimumGladysVersion();
+  const wanted = [major, minor, patch];
+  for (let index = 0; index < 3; index += 1) {
+    if (floor[index] !== wanted[index]) {
+      return floor[index] > wanted[index];
+    }
+  }
+  return true;
+}
+
+// The store vocabulary: unknown keys are silently DROPPED by the indexer, so a
+// typo would cost the shelf without any error.
+const CATALOG_CATEGORIES = [
+  'climate',
+  'lighting',
+  'energy',
+  'security',
+  'multimedia',
+  'appliances',
+  'environment',
+  'protocols',
+  'network',
+  'notifications',
+  'assistants',
+  'services',
+  'transport',
+  'vehicles',
+  'servers',
+  'leisure',
+];
+
 test('every manifest action has a handler registered in index.js', () => {
   for (const action of manifest.actions ?? []) {
     assert.ok(
@@ -64,13 +104,46 @@ test('the Client ID is required: nothing works without a Yoto app', () => {
 
 test('declaring catalog categories requires Gladys >= 4.86.0', () => {
   assert.ok(manifest.categories.length >= 1 && manifest.categories.length <= 3);
-  const minVersion = manifest.gladys_version.match(/>=\s*(\d+)\.(\d+)\.\d+/);
-  assert.ok(minVersion, 'gladys_version must declare a minimum version');
-  const [, major, minor] = minVersion.map(Number);
+  assert.equal(new Set(manifest.categories).size, manifest.categories.length);
+  for (const category of manifest.categories) {
+    assert.ok(CATALOG_CATEGORIES.includes(category), `unknown catalog category "${category}"`);
+  }
   assert.ok(
-    major > 4 || (major === 4 && minor >= 86),
+    floorAtLeast(4, 86),
     `categories requires gladys_version >= 4.86.0, got "${manifest.gladys_version}"`,
   );
+});
+
+test('the search keywords follow the store rules', () => {
+  // 1-10 unique terms of 2-30 characters, compared trimmed and lowercased.
+  const { keywords } = manifest;
+  assert.ok(Array.isArray(keywords) && keywords.length >= 1 && keywords.length <= 10);
+  const normalized = keywords.map((keyword) => keyword.trim().toLowerCase());
+  assert.equal(new Set(normalized).size, keywords.length, 'keywords must be unique');
+  for (const keyword of normalized) {
+    assert.ok(keyword.length >= 2 && keyword.length <= 30, `"${keyword}": 2 to 30 characters`);
+  }
+});
+
+test('the integration is worldwide: no countries declared', () => {
+  // Yoto players are sold in many countries and the Yoto cloud serves them
+  // all: a `countries` list would hide the integration from the others.
+  assert.equal(manifest.countries, undefined);
+});
+
+test('keywords, countries and music require Gladys >= 5.3.0', () => {
+  if (['keywords', 'countries', 'music'].some((field) => manifest[field] !== undefined)) {
+    assert.ok(floorAtLeast(5, 3), `got "${manifest.gladys_version}", the fields need 5.3.0`);
+  }
+});
+
+test('the players are declared as music players, with no catalog operation', () => {
+  // A Yoto player plays cards: its now playing (the card, its cover) is
+  // published, but the REST API can neither browse, search nor queue — and
+  // declaring an operation would show a panel that does nothing.
+  assert.equal(manifest.type, 'device', 'music is accepted on device integrations only');
+  assert.deepEqual(manifest.music, {});
+  assert.ok(!/onMusic(Browse|Search|Play|QueueGet|QueuePlay)\(/.test(indexSource));
 });
 
 test('the integration declares itself as a cloud one', () => {
@@ -87,11 +160,7 @@ test('the manifest version matches the docker image tag', () => {
 });
 
 test('widgets, scene triggers and scene actions require Gladys >= 5.1.0', () => {
-  const [, major, minor] = manifest.gladys_version.match(/>=\s*(\d+)\.(\d+)\.\d+/).map(Number);
-  assert.ok(
-    major > 5 || (major === 5 && minor >= 1),
-    `got "${manifest.gladys_version}", the capabilities need 5.1.0`,
-  );
+  assert.ok(floorAtLeast(5, 1), `got "${manifest.gladys_version}", the capabilities need 5.1.0`);
 });
 
 test('every manifest widget is served in index.js, and only those', () => {

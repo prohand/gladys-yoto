@@ -8,6 +8,11 @@
 // declared `read_only: true` so the Gladys UI never shows a control that
 // would silently do nothing.
 //
+// A Yoto player is a music player for Gladys (manifest `music`, Gladys 5.3):
+// its "now playing" is the card loaded — title, author, cover — published with
+// `gladys.publishNowPlaying` next to the playback state and the volume it
+// already had. No position nor track: the REST API only knows the card.
+//
 // Refresh path: Gladys calls `onPoll` on the device tick (`poll_frequency`,
 // in milliseconds, chosen from the fixed list the core accepts) ->
 // (optionally) ask the player to report -> read the shadow -> publish the
@@ -38,6 +43,10 @@ export const FEATURE = {
   TEMPERATURE: 'temperature',
   WIFI: 'wifi',
   ONLINE: 'online',
+  // Now playing (Gladys 5.3 music players): the card, as the music box reads it.
+  TITLE: 'title',
+  ARTIST: 'artist',
+  ARTWORK: 'artwork',
 };
 
 /** External ids of one player (`deviceId` is the id Yoto gives the hardware). */
@@ -55,10 +64,12 @@ export function buildPlayerDevice(gladys, player, config) {
   return {
     name: player.name,
     external_id: ids.device,
-    // A device is polled only when it asks for it, on one of the fixed ticks
-    // Gladys knows (milliseconds): anything else is refused by the core with
-    // "invalid poll frequency". A slower interval than the 60 s ceiling is
-    // honoured by the registry, which skips the ticks in between.
+    // A device is polled on one of the fixed ticks Gladys knows
+    // (milliseconds): anything else is refused by the core with "invalid poll
+    // frequency". A slower interval than the 60 s ceiling is honoured by the
+    // registry, which skips the ticks in between. Gladys 5.3 sets `should_poll`
+    // itself next to a `poll_frequency`; it stays explicit for the devices
+    // created by the older cores, which never polled a device without it.
     should_poll: true,
     poll_frequency: gladysPollFrequency(config.poll_frequency),
     features: [
@@ -183,7 +194,29 @@ export function buildPlayerDevice(gladys, player, config) {
         has_feedback: false,
         keep_history: true,
       },
+      // The now playing of the Gladys 5.3 music box: the card, seen as an
+      // album. Read-only like everything else, and without history (the core
+      // forces it off on the whole music category). Text states: min/max are
+      // the neutral 0/0 pair, as for "Card playing".
+      musicTextFeature('Title', ids.feature(FEATURE.TITLE), DEVICE_FEATURE_TYPES.MUSIC.TITLE),
+      musicTextFeature('Author', ids.feature(FEATURE.ARTIST), DEVICE_FEATURE_TYPES.MUSIC.ARTIST),
+      // An image KEY, never a URL: the SDK serves the cover behind it.
+      musicTextFeature('Cover', ids.feature(FEATURE.ARTWORK), DEVICE_FEATURE_TYPES.MUSIC.ARTWORK),
     ],
+  };
+}
+
+function musicTextFeature(name, externalId, type) {
+  return {
+    name,
+    external_id: externalId,
+    category: DEVICE_FEATURE_CATEGORIES.MUSIC,
+    type,
+    min: 0,
+    max: 0,
+    read_only: true,
+    has_feedback: false,
+    keep_history: false,
   };
 }
 
@@ -192,14 +225,14 @@ export function buildPlayerDevice(gladys, player, config) {
  *
  * @param {object} deps
  *   - api       : YotoApi
- *   - cardTitles: Map<cardId, { title, retryAt? }>, so a card title is
- *                 fetched once (a failed fetch is retried later)
+ *   - cards     : Map<cardId, { title, author, coverUrl, retryAt? }>, so a
+ *                 card is fetched once (a failed fetch is retried later)
  *   - now       : clock, injectable for the tests
  * @returns {Promise<object>} the snapshot of the player (see buildSnapshot),
  *   which the dashboard widgets, the scene triggers and the scene actions
  *   read instead of calling Yoto again
  */
-export async function pollPlayer(gladys, player, config, { api, cardTitles, now }) {
+export async function pollPlayer(gladys, player, config, { api, cards, now }) {
   const ids = playerExternalIds(gladys, player.deviceId);
 
   if (config.request_status_push) {
@@ -232,14 +265,49 @@ export async function pollPlayer(gladys, player, config, { api, cardTitles, now 
   // publication throws and is sent again by the next poll.
   await gladys.publishChangedStates(numericStates, { heartbeat: STATE_HEARTBEAT_MS });
 
-  const cardTitle = await resolveCardTitle(status.activeCard, { api, cardTitles, now });
+  const card = await resolveCard(status.activeCard, { api, cards, now });
+  // The id alone ("h2Fbz") means nothing to a user, but it beats no answer.
+  const cardTitle = card === null ? null : (card.title ?? status.activeCard);
   // The text feature shows a dash rather than an empty string: Gladys would
   // otherwise keep displaying the previous title.
   const text = cardTitle ?? '-';
   const cardState = { device_feature_external_id: ids.feature(FEATURE.CARD), text };
   await gladys.publishChangedStates([cardState], { heartbeat: STATE_HEARTBEAT_MS });
 
+  await gladys.publishNowPlaying(
+    ids.device,
+    nowPlayingOf(isPlaying(status) === false ? null : card, cardTitle),
+    {
+      featureExternalIds: {
+        [DEVICE_FEATURE_TYPES.MUSIC.TITLE]: ids.feature(FEATURE.TITLE),
+        [DEVICE_FEATURE_TYPES.MUSIC.ARTIST]: ids.feature(FEATURE.ARTIST),
+        [DEVICE_FEATURE_TYPES.MUSIC.ARTWORK]: ids.feature(FEATURE.ARTWORK),
+      },
+    },
+  );
+
   return buildSnapshot(player, online, status, cardTitle);
+}
+
+/**
+ * The now playing of a player: the card loaded, or explicitly nothing (an
+ * absent key would mean "unchanged" to `publishNowPlaying`). The playback
+ * state and the volume are not part of it: they keep their own features
+ * ("Playing", "Volume") and the hourly heartbeat of `publishChangedStates`.
+ * @param {object|null} card what resolveCard found, null when nothing is loaded
+ * @param {string|null} title the title shown (the card id when Yoto gave none)
+ */
+export function nowPlayingOf(card, title) {
+  if (card === null) {
+    return { title: '', artist: '', artwork_url: null };
+  }
+  return {
+    title: title ?? '',
+    artist: card.author ?? '',
+    // The SDK turns the URL into an artwork key and its default handler
+    // fetches the cover when Gladys asks for it.
+    artwork_url: card.coverUrl ?? null,
+  };
 }
 
 /**
@@ -267,31 +335,34 @@ export function buildSnapshot(player, online, status, cardTitle) {
   };
 }
 
-// A card title that could not be fetched (Yoto down, a 5xx, a scope added
-// since) is asked again after this delay — remembered as missing for good, the
-// card would show its raw id until the container restarts.
+// A card that could not be fetched (Yoto down, a 5xx, a scope added since) is
+// asked again after this delay — remembered as missing for good, the card
+// would show its raw id until the container restarts.
 export const CARD_TITLE_RETRY_MS = 10 * 60 * 1000;
 
+const UNKNOWN_CARD = { title: null, author: null, coverUrl: null };
+
 /**
- * The title of the card being played — the id alone ("h2Fbz") means nothing
- * to a user. The title never changes for a given card, so a title Yoto gave is
- * memoized for good; a failure is only remembered for CARD_TITLE_RETRY_MS, and
- * meanwhile we degrade to the id rather than losing the information.
+ * The card being played: title, author, cover. They never change for a given
+ * card, so what Yoto gave is memoized for good; a failure is only remembered
+ * for CARD_TITLE_RETRY_MS, and meanwhile the fields stay null (the title then
+ * degrades to the id rather than losing the information).
+ * @returns {Promise<{ title, author, coverUrl }|null>} null when no card is loaded
  */
-async function resolveCardTitle(cardId, { api, cardTitles, now = Date.now }) {
+async function resolveCard(cardId, { api, cards, now = Date.now }) {
   if (!cardId) {
     return null;
   }
-  const known = cardTitles.get(cardId);
+  const known = cards.get(cardId);
   if (!known || (known.retryAt !== undefined && now() >= known.retryAt)) {
     try {
-      cardTitles.set(cardId, { title: await api.getCardTitle(cardId) });
+      cards.set(cardId, { ...UNKNOWN_CARD, ...(await api.getCard(cardId)) });
     } catch (err) {
-      logger.debug(`Card title unavailable for ${cardId}: ${err.message}`);
-      cardTitles.set(cardId, { title: null, retryAt: now() + CARD_TITLE_RETRY_MS });
+      logger.debug(`Card unavailable for ${cardId}: ${err.message}`);
+      cards.set(cardId, { ...UNKNOWN_CARD, retryAt: now() + CARD_TITLE_RETRY_MS });
     }
   }
-  return cardTitles.get(cardId).title ?? cardId;
+  return cards.get(cardId);
 }
 
 function booleanToState(value) {

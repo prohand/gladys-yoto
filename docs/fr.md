@@ -7,7 +7,7 @@ température de l'appareil, signal Wi-Fi et présence en ligne.
 ## Ce que vous obtenez
 
 Un appareil Gladys par lecteur Yoto du compte, avec neuf capteurs en lecture
-seule. L'API publique Yoto expose la télémétrie des lecteurs mais pas les
+seule et la « lecture en cours » d'un lecteur de musique (voir plus bas). L'API publique Yoto expose la télémétrie des lecteurs mais pas les
 commandes de lecture (play, pause, volume) : rien n'est donc pilotable depuis
 Gladys, et les capteurs sont déclarés en lecture seule pour ne pas afficher de
 bouton inopérant.
@@ -17,7 +17,7 @@ deux actions de scène (voir plus bas).
 
 ## Prérequis
 
-Gladys Assistant **5.1** ou plus récent.
+Gladys Assistant **5.3** ou plus récent (depuis la version 2.4 de l'intégration).
 
 Une application sur le portail développeur Yoto (gratuit) :
 
@@ -64,6 +64,27 @@ Les jetons d'accès sont conservés par Gladys en interne (jamais affichés dans
 l'interface) : la liaison survit à un redémarrage ou à une mise à jour de
 l'image.
 
+## Lecture en cours (lecteur de musique)
+
+Chaque lecteur Yoto est aussi un **lecteur de musique** dans Gladys : la carte
+qu'il joue est sa « lecture en cours », affichée par la boîte musique de Gladys
+à côté des fonctionnalités « Playing » et « Volume » :
+
+- **Title** — le titre de la carte (son identifiant quand Yoto ne le donne pas) ;
+- **Author** — l'auteur indiqué par la carte, vide sinon ;
+- **Cover** — la couverture de la carte. Gladys demande l'image à
+  l'intégration : votre navigateur ne la charge jamais depuis Yoto.
+
+Elles sont effacées quand la carte est retirée. Yoto ne partage que la carte,
+ni le chapitre ou la piste en cours ni la position de lecture : rien de tout
+cela n'est affiché. Le lecteur reste en lecture seule : pause, reprise et volume
+passent par un canal privé de Yoto que l'API publique n'ouvre pas, Gladys
+n'affiche donc aucune commande de lecture.
+
+Un lecteur ajouté avant la version 2.4 : ouvrez l'onglet **Découverte** et
+cliquez sur **Mettre à jour** sur ce lecteur pour obtenir les trois nouvelles
+fonctionnalités.
+
 ## Actions
 
 - **Tester la connexion** — interroge le compte Yoto et affiche le nombre de
@@ -73,7 +94,7 @@ l'image.
 
 ## Widgets du tableau de bord
 
-Nécessite Gladys 5.1 ou plus récent. Ajoutez-les depuis l'éditeur du tableau
+Ajoutez-les depuis l'éditeur du tableau
 de bord :
 
 - **Lecteurs Yoto** — tous les lecteurs du compte dans une seule carte : la
@@ -90,8 +111,6 @@ widgets affichent la dernière lecture : ouvrir un tableau de bord n'interroge
 jamais Yoto.
 
 ## Scènes
-
-Nécessite Gladys 5.1 ou plus récent.
 
 Déclencheurs (le filtre **Lecteur** est facultatif : vide = n'importe quel
 lecteur) :
@@ -125,6 +144,10 @@ possible : l'API publique Yoto ne propose pas ces commandes (elles passent par
 un canal privé de Yoto).
 
 ## Dépannage
+
+- **Pas de pochette dans la boîte musique** — la carte n'a pas de couverture
+  chez Yoto, ou l'image dépasse ce que Gladys accepte (300 Ko) : le titre et
+  l'auteur restent affichés.
 
 - **« Aucun compte Yoto lié : cliquez sur Connecter »** — le Client ID est
   renseigné mais la liaison n'a pas encore été faite, ou elle a expiré.

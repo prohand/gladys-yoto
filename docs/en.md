@@ -6,7 +6,8 @@ temperature, Wi-Fi signal and online state.
 
 ## What you get
 
-One Gladys device per Yoto player on the account, with nine read-only sensors.
+One Gladys device per Yoto player on the account, with nine read-only sensors
+and the read-only "now playing" of a music player (see below).
 The public Yoto API reports the player telemetry but not the playback commands
 (play, pause, volume), so nothing is controllable from Gladys — the features are
 declared read-only rather than showing a button that would do nothing.
@@ -16,7 +17,7 @@ scene actions (see below).
 
 ## Requirements
 
-Gladys Assistant **5.1** or later.
+Gladys Assistant **5.3** or later (since version 2.4 of the integration).
 
 A free app on the Yoto developer dashboard:
 
@@ -58,6 +59,25 @@ Settings:
 The tokens are kept by Gladys internally (never shown in the UI): the link
 survives a restart or an image update.
 
+## Now playing (music player)
+
+Each Yoto player is also a **music player** in Gladys: the card it plays is its
+"now playing", shown by the Gladys music box next to the **Playing** and
+**Volume** features:
+
+- **Title** — the title of the card (its id when Yoto does not give one);
+- **Author** — the author the card names, empty otherwise;
+- **Cover** — the cover of the card. Gladys asks the integration for the
+  image: your browser never loads it from Yoto.
+
+They are cleared when the card is removed. Yoto only shares the card, not the
+chapter or the track being played nor its position, so none is shown. The
+player stays read-only: pause, resume and the volume go through a private Yoto
+channel the public API does not open, so Gladys shows no play/pause control.
+
+A player added before version 2.4: open the **Discover** tab and click
+**Update** on it to get the three new features.
+
 ## Actions
 
 - **Test the connection** — queries the Yoto account and shows how many players
@@ -67,7 +87,7 @@ survives a restart or an image update.
 
 ## Dashboard widgets
 
-Requires Gladys 5.1 or later. Add them from **Dashboard → Edit → New widget**:
+Add them from **Dashboard → Edit → New widget**:
 
 - **Yoto players** — every player of the account in one card: the card being
   played, the battery level (green, orange under 50 %, red under 20 %, a ⚡
@@ -81,8 +101,6 @@ Both have a **Refresh** button that reads the players right away. The widgets
 are drawn from the last reading: opening a dashboard never queries Yoto.
 
 ## Scenes
-
-Requires Gladys 5.1 or later.
 
 Triggers (the **Player** filter is optional: empty means any player):
 
@@ -113,6 +131,10 @@ the public Yoto API does not offer these commands (they go through a private
 Yoto channel).
 
 ## Troubleshooting
+
+- **No cover in the music box** — the card has no cover on Yoto's side, or the
+  image is larger than what Gladys accepts (300 KB): the title and the author
+  are still shown.
 
 - **"Battery below 10 % (current: 1 %)" alert while the player is charged** —
   fixed after 2.0.0: the "Charging" feature sat in the battery category, and the
