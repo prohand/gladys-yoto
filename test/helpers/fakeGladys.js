@@ -6,11 +6,25 @@
 //   - publishState / publishStates  -> record calls so tests can assert them
 //   - publishChangedStates / forgetPublishedStates -> the SDK's deduplication,
 //                                      reproduced in memory (see below)
+//   - publishNowPlaying / artworkKey -> the SDK's now-playing diff (texts,
+//                                      artwork key), reproduced in memory
 //   - publishSceneEvent             -> record the scene events
 //   - requestWidgetRefresh          -> record the widget nudges
 // This lets us test the wiring logic (discovery payloads, dispatch,
 // deduplication) without a running Gladys server or a real WebSocket.
 // -----------------------------------------------------------------------------
+
+import { artworkKey } from '@gladysassistant/integration-sdk';
+
+// The keys of a `nowPlaying` snapshot this integration sends, and the music
+// feature type each one feeds (the SDK accepts more: position, duration…).
+const NOW_PLAYING_TYPES = {
+  playback_state: 'playback_state',
+  title: 'title',
+  artist: 'artist',
+  artwork_url: 'artwork',
+};
+const NOW_PLAYING_TEXT_TYPES = ['title', 'artist', 'artwork'];
 
 export function createFakeGladys({ failSceneEvents = false } = {}) {
   const published = [];
@@ -19,6 +33,10 @@ export function createFakeGladys({ failSceneEvents = false } = {}) {
   // Last value Gladys accepted per feature, as the SDK remembers it.
   const publishedStates = new Map();
   const changedStatesCalls = [];
+  // Last now-playing values published per device, as the SDK remembers them.
+  const nowPlaying = new Map();
+  const nowPlayingCalls = [];
+  const artworkUrls = new Map();
 
   return {
     published,
@@ -26,6 +44,8 @@ export function createFakeGladys({ failSceneEvents = false } = {}) {
     widgetRefreshes,
     publishedStates,
     changedStatesCalls,
+    nowPlayingCalls,
+    artworkUrls,
 
     externalIds(type, platformId) {
       const device = `ext:yoto:${type}:${platformId}`;
@@ -86,13 +106,61 @@ export function createFakeGladys({ failSceneEvents = false } = {}) {
     forgetPublishedStates(externalId) {
       if (externalId === undefined) {
         publishedStates.clear();
+        nowPlaying.clear();
         return;
       }
+      nowPlaying.delete(externalId);
       for (const id of [...publishedStates.keys()]) {
         if (id === externalId || id.startsWith(`${externalId}:`)) {
           publishedStates.delete(id);
         }
       }
+    },
+
+    artworkKey(url) {
+      const key = artworkKey(url);
+      artworkUrls.set(key, url);
+      return key;
+    },
+
+    // Same rules as the SDK 0.16 method, for the keys this integration sends:
+    // an absent key is "unchanged", only the values that moved since the last
+    // snapshot ACCEPTED for the device are published, in one batch; texts go
+    // as `text`, `artwork_url` becomes its key (null: an empty artwork).
+    async publishNowPlaying(deviceExternalId, values, { featureExternalIds = {} } = {}) {
+      nowPlayingCalls.push({ deviceExternalId, values, featureExternalIds });
+      const previous = nowPlaying.get(deviceExternalId) ?? {};
+      const next = { ...previous };
+      const states = [];
+      for (const [key, value] of Object.entries(values)) {
+        const type = NOW_PLAYING_TYPES[key];
+        if (type === undefined) {
+          throw new Error(`publishNowPlaying: unknown key "${key}"`);
+        }
+        let normalized = value;
+        if (key === 'artwork_url') {
+          normalized = value === null ? '' : this.artworkKey(value);
+        }
+        next[type] = normalized;
+        if (previous[type] === normalized) {
+          continue;
+        }
+        const state = {
+          device_feature_external_id: featureExternalIds[type] ?? `${deviceExternalId}:${type}`,
+        };
+        if (NOW_PLAYING_TEXT_TYPES.includes(type)) {
+          state.text = normalized;
+        } else {
+          state.state = normalized;
+        }
+        states.push(state);
+      }
+      if (states.length === 0) {
+        return { success: true, count: 0 };
+      }
+      await this.publishStates(states);
+      nowPlaying.set(deviceExternalId, next);
+      return { success: true, count: states.length };
     },
 
     async publishSceneEvent(key, data) {
@@ -112,7 +180,12 @@ export function createFakeGladys({ failSceneEvents = false } = {}) {
  * Stand-in for the Yoto REST client: canned answers, and a log of the calls so
  * a test can assert that a status push was requested (or not).
  */
-export function createFakeYotoApi({ devices = [], statuses = {}, cardTitles = {} } = {}) {
+export function createFakeYotoApi({
+  devices = [],
+  statuses = {},
+  cardTitles = {},
+  cards = {},
+} = {}) {
   const calls = [];
 
   return {
@@ -132,12 +205,17 @@ export function createFakeYotoApi({ devices = [], statuses = {}, cardTitles = {}
       calls.push({ method: 'requestStatusPush', deviceId });
     },
 
-    async getCardTitle(cardId) {
-      calls.push({ method: 'getCardTitle', cardId });
+    // `cards` gives a full card (title, author, coverUrl), `cardTitles` a
+    // title alone; a card in neither is a failed request.
+    async getCard(cardId) {
+      calls.push({ method: 'getCard', cardId });
+      if (cardId in cards) {
+        return { title: null, author: null, coverUrl: null, ...cards[cardId] };
+      }
       if (!(cardId in cardTitles)) {
         throw new Error('card not found');
       }
-      return cardTitles[cardId];
+      return { title: cardTitles[cardId], author: null, coverUrl: null };
     },
   };
 }

@@ -6,6 +6,17 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Each Yoto player is now a read-only Gladys music player: its "now playing" is the card loaded — title, author and cover (served through Gladys, never loaded by the browser from Yoto) — on three new features (`title`, `artist`, `artwork`), cleared when the card is removed. Existing players get them with **Update** in the Discover tab. No play/pause control: the public Yoto API has no such command.
+- Search keywords for the Gladys catalog (Yoto Mini, audio cards, audiobooks, bedtime stories…).
+
+### Changed
+
+- Gladys 5.3.0 or later is now required (search keywords, music players).
+- `@gladysassistant/integration-sdk` updated to 0.16.0.
+- Pull requests run the store admission checks without the image check, and the Release workflow ends with the full check (image included) once the image is published.
+
 ## [2.3.1] - 2026-10-23
 
 - Maintenance release, no functional change.

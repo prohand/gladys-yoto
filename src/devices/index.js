@@ -6,7 +6,7 @@
 // Yoto app shows up on the next scan.
 //
 // The registry owns what has to survive between two polls: the known players,
-// the card-title cache, the date of the last poll of each player (Gladys never
+// the card cache, the date of the last poll of each player (Gladys never
 // ticks slower than a minute: a longer interval is enforced here) and the last
 // snapshot of each player — the dashboard widgets are drawn from it, and
 // comparing two snapshots is what fires the scene triggers. The last published
@@ -34,7 +34,8 @@ export class PlayerRegistry {
     this.now = now;
     /** @type {Map<string, object>} Yoto deviceId -> player */
     this.players = new Map();
-    this.cardTitles = new Map();
+    /** @type {Map<string, object>} Yoto cardId -> { title, author, coverUrl } */
+    this.cards = new Map();
     /** @type {Map<string, number>} Gladys external_id -> date of the last poll */
     this.lastPollAt = new Map();
     /** @type {Map<string, object>} Yoto deviceId -> last snapshot (see buildSnapshot) */
@@ -139,7 +140,7 @@ export class PlayerRegistry {
     this.lastPollAt.set(externalId, this.now());
     const snapshot = await pollPlayer(gladys, player, config, {
       api: this.api,
-      cardTitles: this.cardTitles,
+      cards: this.cards,
       now: this.now,
     });
 

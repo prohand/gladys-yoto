@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  artworkKey,
   DEVICE_FEATURE_CATEGORIES,
   DEVICE_FEATURE_TYPES,
   DEVICE_FEATURE_UNITS,
@@ -351,7 +352,7 @@ test('a card title Yoto failed to give is asked again after a while, not forever
   let clock = 1_000_000;
   const registry = new PlayerRegistry(api, { now: () => clock });
   await registry.refresh();
-  const titleCalls = () => api.calls.filter((call) => call.method === 'getCardTitle').length;
+  const titleCalls = () => api.calls.filter((call) => call.method === 'getCard').length;
 
   await registry.pollAll(gladys, CONFIG);
   assert.deepEqual(stateOf(gladys, FEATURE.CARD), { text: 'h2Fbz' });
@@ -430,4 +431,130 @@ test('a failed publication is retried on the next poll', async () => {
   registry.lastPollAt.clear();
   await registry.poll(gladys, device, CONFIG);
   assert.equal(stateOf(gladys, FEATURE.BATTERY), 87);
+});
+
+const COVER = 'https://card-content.yotoplay.com/covers/h2Fbz.jpg';
+
+function registryWithCard(statuses = STATUS) {
+  return new PlayerRegistry(
+    createFakeYotoApi({
+      devices: [PLAYER],
+      statuses,
+      cards: { h2Fbz: { title: 'Le Gruffalo', author: 'Julia Donaldson', coverUrl: COVER } },
+    }),
+  );
+}
+
+test('the feature keys of the existing devices never change', () => {
+  // Gladys keys history, scenes and dashboards on them: a renamed key is a
+  // removed feature for every user. New ones are appended, never swapped in.
+  const gladys = createFakeGladys();
+  const device = buildPlayerDevice(gladys, PLAYER, CONFIG);
+  const prefix = `${playerExternalIds(gladys, PLAYER.deviceId).device}:`;
+  assert.deepEqual(
+    device.features.map((feature) => feature.external_id.slice(prefix.length)),
+    [
+      'battery',
+      'charging',
+      'volume',
+      'playing',
+      'card',
+      'ambient-light',
+      'temperature',
+      'wifi',
+      'online',
+      'title',
+      'artist',
+      'artwork',
+    ],
+  );
+});
+
+test('a player declares the read-only now playing of a Gladys music player', () => {
+  const gladys = createFakeGladys();
+  const device = buildPlayerDevice(gladys, PLAYER, CONFIG);
+  const music = device.features.filter((feature) => feature.category === 'music');
+  assert.deepEqual(
+    music.map((feature) => feature.type),
+    ['volume', 'playback_state', 'title', 'artist', 'artwork'],
+  );
+  for (const feature of music) {
+    // The REST API sends no playback command: nothing the music box could
+    // offer would reach the player.
+    assert.equal(feature.read_only, true, `${feature.name} must be read-only`);
+    assert.equal(feature.has_feedback, false);
+  }
+  for (const key of [FEATURE.TITLE, FEATURE.ARTIST, FEATURE.ARTWORK]) {
+    const feature = device.features.find((entry) => entry.external_id.endsWith(`:${key}`));
+    assert.equal(feature.keep_history, false, 'the core keeps no history of a now playing');
+    assert.equal(feature.min, 0);
+    assert.equal(feature.max, 0);
+  }
+});
+
+test('the card loaded is published as the now playing, its cover as an artwork key', async () => {
+  const gladys = createFakeGladys();
+  const registry = registryWithCard();
+  await registry.refresh();
+  const device = registry.buildDiscoveredDevices(gladys, CONFIG)[0];
+
+  await registry.poll(gladys, device, CONFIG);
+
+  assert.deepEqual(stateOf(gladys, FEATURE.TITLE), { text: 'Le Gruffalo' });
+  assert.deepEqual(stateOf(gladys, FEATURE.ARTIST), { text: 'Julia Donaldson' });
+  // Never the URL: a key the SDK serves the bytes behind, from the URL it
+  // recorded (its default artwork handler fetches it when Gladys asks).
+  const key = artworkKey(COVER);
+  assert.deepEqual(stateOf(gladys, FEATURE.ARTWORK), { text: key });
+  assert.equal(gladys.artworkUrls.get(key), COVER);
+  // The playback state and the volume keep their own features and heartbeat.
+  assert.equal(stateOf(gladys, FEATURE.PLAYING), 1);
+  const [call] = gladys.nowPlayingCalls;
+  assert.equal(call.deviceExternalId, device.external_id);
+  assert.deepEqual(Object.keys(call.values).sort(), ['artist', 'artwork_url', 'title']);
+});
+
+test('the now playing is cleared explicitly when the card is removed', async () => {
+  const statuses = structuredClone(STATUS);
+  const gladys = createFakeGladys();
+  const registry = registryWithCard(statuses);
+  await registry.refresh();
+
+  await registry.pollAll(gladys, CONFIG);
+  statuses.y2abc123.status.cardInserted = 0;
+  statuses.y2abc123.status.activeCard = 'none';
+  await registry.pollAll(gladys, CONFIG);
+
+  // An absent key would mean "unchanged" to publishNowPlaying.
+  assert.deepEqual(stateOf(gladys, FEATURE.TITLE), { text: '' });
+  assert.deepEqual(stateOf(gladys, FEATURE.ARTIST), { text: '' });
+  assert.deepEqual(stateOf(gladys, FEATURE.ARTWORK), { text: '' });
+  assert.equal(stateOf(gladys, FEATURE.PLAYING), 0);
+});
+
+test('a card Yoto could not describe still names its id, with no cover', async () => {
+  const gladys = createFakeGladys();
+  const registry = new PlayerRegistry(
+    createFakeYotoApi({ devices: [PLAYER], statuses: STATUS, cardTitles: {} }),
+  );
+  await registry.refresh();
+
+  await registry.pollAll(gladys, CONFIG);
+
+  assert.deepEqual(stateOf(gladys, FEATURE.TITLE), { text: 'h2Fbz' });
+  assert.deepEqual(stateOf(gladys, FEATURE.ARTIST), { text: '' });
+  assert.deepEqual(stateOf(gladys, FEATURE.ARTWORK), { text: '' });
+});
+
+test('an unchanged card is not published again as the now playing', async () => {
+  const gladys = createFakeGladys();
+  const registry = registryWithCard();
+  await registry.refresh();
+
+  await registry.pollAll(gladys, CONFIG);
+  const before = gladys.published.length;
+  await registry.pollAll(gladys, CONFIG);
+
+  assert.equal(gladys.published.length, before);
+  assert.equal(gladys.nowPlayingCalls.length, 2, 'asked twice, published once');
 });

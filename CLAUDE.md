@@ -7,8 +7,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 A Gladys Assistant **external integration** (Node 22+, ESM, no build step, one runtime
 dependency: `@gladysassistant/integration-sdk`) that brings [Yoto](https://yotoplay.com) players
 into Gladys: one read-only device per player (battery, charging, volume, playing, card playing,
-ambient light, device temperature, Wi-Fi signal, online). Gladys 5.1+ adds two widgets, three
-scene triggers and two scene actions. It talks to the Yoto cloud with the user's own Yoto app
+ambient light, device temperature, Wi-Fi signal, online) that is also a read-only Gladys music
+player (now playing: card title, author, cover). It requires Gladys 5.3+ and adds two widgets,
+three scene triggers and two scene actions. It talks to the Yoto cloud with the user's own Yoto app
 (Client ID from dashboard.yoto.dev) and OAuth tokens.
 
 ## Commands
@@ -55,7 +56,15 @@ src/widgets.js         widgets `players` and `player`
   A new Client ID clears the tokens.
 - **Polling**: devices carry `should_poll: true` and the slowest Gladys tick not above the
   configured interval (`gladysPollFrequency`; Gladys only accepts 1 s to 60 s, any other value
-  rejects the whole discovery). The registry skips polls inside the configured interval.
+  rejects the whole discovery). The registry skips polls inside the configured interval. Gladys
+  5.3 sets `should_poll` itself next to a `poll_frequency`; it stays explicit for the devices
+  created by older cores, which never polled a device without it.
+- **Music player, read-only** (manifest `"music": {}`): the now playing is the CARD — title,
+  author, cover (`gladys.publishNowPlaying`, artwork through `artworkKey` and the SDK's default
+  artwork handler) — on the new keys `title` / `artist` / `artwork`. `playing`
+  (`playback_state`, 0/1) and `volume` keep their keys and `publishChangedStates` heartbeat. The
+  REST API has no pause/resume/volume command nor track position (MQTT only): never declare
+  `browse` / `search` / `queue` nor make a feature writable without a real command.
 - **Unchanged values are not re-published** (SDK `publishChangedStates`) — except once an hour
   (`STATE_HEARTBEAT_MS`), so Gladys never shows a stable value as stale. A value is recorded only
   after Gladys accepted it. The memory is cleared on every `connected`
@@ -73,7 +82,8 @@ src/widgets.js         widgets `players` and `player`
 ### Manifest
 
 `test/manifest.test.js` keeps `gladys-assistant-integration.json` in sync with `DEFAULT_CONFIG`,
-the bounds, the action handlers and the widget/scene keys (`gladys_version >=5.1.0`).
+the bounds, the action handlers, the widget/scene keys, the keywords, the music declaration and
+the floor (`gladys_version >=5.3.0`, required by `keywords` / `music`).
 
 ## Testing
 

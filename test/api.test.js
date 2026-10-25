@@ -93,7 +93,7 @@ test('a 403 (missing scope) is not worth a refresh', async () => {
   try {
     const api = new YotoApi(linkedStore(), () => 'client-1');
     await assert.rejects(
-      () => api.getCardTitle('h2Fbz'),
+      () => api.getCard('h2Fbz'),
       (err) => err instanceof YotoAuthError && !err.needsRelink,
     );
     assert.equal(fetchMock.calls.length, 1);
@@ -129,6 +129,45 @@ test('a refused status request does not wait', async () => {
     });
     await assert.rejects(() => api.requestStatusPush('y2abc123'));
     assert.deepEqual(sleeps, []);
+  } finally {
+    fetchMock.restore();
+  }
+});
+
+test('a card gives its title, its author and its https cover', async () => {
+  const fetchMock = mockFetch([
+    {
+      body: {
+        card: {
+          cardId: 'h2Fbz',
+          title: ' Le Gruffalo ',
+          metadata: {
+            author: 'Julia Donaldson',
+            cover: { imageL: 'https://card-content.yotoplay.com/covers/h2Fbz.jpg' },
+          },
+        },
+      },
+    },
+    {
+      body: {
+        card: { title: 'Sans couverture', metadata: { cover: { imageL: 'http://x/y.jpg' } } },
+      },
+    },
+  ]);
+  try {
+    const api = new YotoApi(linkedStore(), () => 'client-1');
+    assert.deepEqual(await api.getCard('h2Fbz'), {
+      title: 'Le Gruffalo',
+      author: 'Julia Donaldson',
+      coverUrl: 'https://card-content.yotoplay.com/covers/h2Fbz.jpg',
+    });
+    assert.equal(fetchMock.calls[0].url, `${BASE_URL}/card/h2Fbz`);
+    // No author, and a cover that is not https: nothing is guessed.
+    assert.deepEqual(await api.getCard('other'), {
+      title: 'Sans couverture',
+      author: null,
+      coverUrl: null,
+    });
   } finally {
     fetchMock.restore();
   }

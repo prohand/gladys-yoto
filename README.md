@@ -25,7 +25,23 @@ features:
 | Wi-Fi signal       | `signal` / `integer`        | dBm  | `wifiStrength`              |
 | Online             | `input` / `binary`          | –    | `device.online`             |
 
-On top of the devices (Gladys **5.1** or later):
+And, since Gladys **5.3**, the read-only "now playing" of a music player
+(manifest `"music": {}`: no browse, search nor queue), published with
+`gladys.publishNowPlaying` from the same polls:
+
+| Feature | Category            | Source (`GET /card/{id}`)                                                                   |
+| ------- | ------------------- | ------------------------------------------------------------------------------------------- |
+| Title   | `music` / `title`   | `card.title` (falls back to the card id)                                                    |
+| Author  | `music` / `artist`  | `card.metadata.author`                                                                      |
+| Cover   | `music` / `artwork` | `card.metadata.cover.imageL`, as an artwork key served by the SDK's default artwork handler |
+
+They are cleared (`''`, no artwork) when the card is removed. The REST API
+gives neither the track, the chapter nor the position (those only travel over
+the Yoto MQTT channel), so no duration nor position is published, and
+`playback_state` stays the read-only **Playing** feature (0/1, with its hourly
+heartbeat). Gladys **5.3.0** or later is required.
+
+On top of the devices:
 
 | Surface       | Key                 | What it does                                                       |
 | ------------- | ------------------- | ------------------------------------------------------------------ |
@@ -71,8 +87,9 @@ restart or an image update.
 
 ## How the refresh works
 
-Each device is published with `should_poll: true` and a `poll_frequency`, so
-the Gladys scheduler calls `onPoll` per player. The core only accepts the
+Each device is published with a `poll_frequency` (and `should_poll: true`,
+which Gladys 5.3 sets on its own but older cores required for the devices they
+created), so the Gladys scheduler calls `onPoll` per player. The core only accepts the
 frequencies it schedules — 1 s, 2 s, 10 s, 15 s, 30 s and 60 s, in
 **milliseconds** — and refuses anything else with `invalid poll frequency`, so
 the configured interval is mapped to the closest tick that is not faster than
@@ -92,14 +109,14 @@ the new value applies without recreating anything.
 
 ## Yoto API used
 
-| Call                                        | Why                                    |
-| ------------------------------------------- | -------------------------------------- |
-| `POST login.yotoplay.com/oauth/device/code` | Start the account link (RFC 8628)      |
-| `POST login.yotoplay.com/oauth/token`       | Get and refresh the tokens             |
-| `GET /device-v2/devices/mine`               | List the players of the account        |
-| `GET /device-v2/{id}/config`                | Settings + last reported status        |
-| `POST /device-v2/{id}/command/status`       | Ask the player to report now           |
-| `GET /card/{id}`                            | Card title (falls back to the card id) |
+| Call                                        | Why                               |
+| ------------------------------------------- | --------------------------------- |
+| `POST login.yotoplay.com/oauth/device/code` | Start the account link (RFC 8628) |
+| `POST login.yotoplay.com/oauth/token`       | Get and refresh the tokens        |
+| `GET /device-v2/devices/mine`               | List the players of the account   |
+| `GET /device-v2/{id}/config`                | Settings + last reported status   |
+| `POST /device-v2/{id}/command/status`       | Ask the player to report now      |
+| `GET /card/{id}`                            | Card title, author and cover      |
 
 `GET /device-v2/{id}/status` is deliberately not used: Yoto deprecated it and it
 needs an extra scope, while `/config` carries the same firmware status block.
