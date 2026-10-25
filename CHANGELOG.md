@@ -6,6 +6,8 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-10-25
+
 ### Added
 
 - Each Yoto player is now a read-only Gladys music player: its "now playing" is the card loaded — title, author and cover (served through Gladys, never loaded by the browser from Yoto) — on three new features (`title`, `artist`, `artwork`), cleared when the card is removed. Existing players get them with **Update** in the Discover tab. No play/pause control: the public Yoto API has no such command.
@@ -116,7 +118,8 @@ First public release.
 - Set min/max on the Card playing text feature
 - Considérer le lecteur branché comme "en charge"
 
-[Unreleased]: https://github.com/prohand/gladys-yoto/compare/v2.3.1...HEAD
+[Unreleased]: https://github.com/prohand/gladys-yoto/compare/v2.4.0...HEAD
+[2.4.0]: https://github.com/prohand/gladys-yoto/compare/v2.3.1...v2.4.0
 [2.3.1]: https://github.com/prohand/gladys-yoto/compare/v2.3.0...v2.3.1
 [2.3.0]: https://github.com/prohand/gladys-yoto/compare/v2.2.2...v2.3.0
 [2.2.2]: https://github.com/prohand/gladys-yoto/compare/v2.2.1...v2.2.2
