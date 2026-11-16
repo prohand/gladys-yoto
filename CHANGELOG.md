@@ -6,6 +6,10 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.4.3] - 2026-11-16
+
+- Maintenance release, no functional change.
+
 ## [2.4.2] - 2026-11-16
 
 - Update `@gladysassistant/integration-sdk` to 0.16.1 (security update).
@@ -126,7 +130,8 @@ First public release.
 - Set min/max on the Card playing text feature
 - Considérer le lecteur branché comme "en charge"
 
-[Unreleased]: https://github.com/prohand/gladys-yoto/compare/v2.4.2...HEAD
+[Unreleased]: https://github.com/prohand/gladys-yoto/compare/v2.4.3...HEAD
+[2.4.3]: https://github.com/prohand/gladys-yoto/compare/v2.4.2...v2.4.3
 [2.4.2]: https://github.com/prohand/gladys-yoto/compare/v2.4.1...v2.4.2
 [2.4.1]: https://github.com/prohand/gladys-yoto/compare/v2.4.0...v2.4.1
 [2.4.0]: https://github.com/prohand/gladys-yoto/compare/v2.3.1...v2.4.0
